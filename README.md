@@ -10,9 +10,9 @@ Building actual open source including dataset Multilingual TTS more than 150 lan
 
 ## Ablation
 
-1. Use approximate of 10240 * 128 global token size.
+1. Use approximate of 10240 * 128 * 8 GPUs global token size, ~10,485,760 tokens.
 2. 1 epoch.
 3. learning rate 1e-4.
 4. Warmup step is 100.
-5. Compare AdamW with linear learning rate, AdamW with WSD, Muon + AdamW with WSD, where WSD number decay step is 10% of the dataset.
+5. Compare AdamW with constant learning rate, AdamW with linear decay learning rate, AdamW with WSD learning rate, Muon + AdamW with WSD learning rate, where WSD number decay step is 10% of the dataset.
 6. Only done on Qwen3 1.7B Base.
