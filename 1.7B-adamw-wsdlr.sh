@@ -6,7 +6,7 @@ torchrun --nproc_per_node 8 \
 -m qwen3_adamw \
 --model_name_or_path "Qwen/Qwen3-1.7B-Base" \
 --per_device_train_batch_size 8 \
---gradient_accumulation_steps 16 \
+--gradient_accumulation_steps 32 \
 --output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-float32-adamw-wsdlr \
 --bf16 --do_train --do_eval false --num_train_epochs 1 \
 --train_file "gfs/01be5b33/combine-multipacking" \
