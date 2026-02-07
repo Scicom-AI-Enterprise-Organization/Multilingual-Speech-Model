@@ -234,8 +234,9 @@ class MuonPlusAdamW(torch.optim.Optimizer):
         muon_nesterov: bool = True,
         muon_ns_steps: int = 5,
         # AdamW hyperparameters
-        adamw_betas: tuple = (0.9, 0.95),
-        adamw_weight_decay: float = 0.01,
+        # make sure consistent with https://huggingface.co/docs/transformers/v4.56.2/en/main_classes/trainer#transformers.TrainingArguments
+        adamw_betas: tuple = (0.9, 0.999),
+        adamw_weight_decay: float = 0.0,
         adamw_eps: float = 1e-8,
         # Parameter filtering
         embed_patterns: tuple = ('embed', 'wte', 'wpe'),
@@ -290,6 +291,9 @@ class MuonPlusAdamW(torch.optim.Optimizer):
             else:
                 adamw_params.append(p)
                 adamw_params_name.append(name)
+
+        print('muon_params_name', muon_params_name)
+        print('adamw_params_name', adamw_params_name)
 
         # Default Muon LR is 0.02 (paper recommendation)
         effective_muon_lr = muon_lr if muon_lr is not None else 0.02
