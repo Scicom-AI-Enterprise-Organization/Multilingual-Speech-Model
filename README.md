@@ -26,5 +26,5 @@ All steps to reproduce in [preparation](preparation).
 2. 1 epoch.
 3. learning rate 1e-4.
 4. Warmup step is 100.
-5. Compare AdamW with constant learning rate, AdamW with linear decay learning rate, AdamW with WSD learning rate, Muon + AdamW with WSD learning rate, where WSD number decay step is 10% of the dataset.
+5. Compare AdamW with WSD learning rate, Muon + AdamW with WSD learning rate, where WSD number decay step is 10% of the dataset.
 6. Only done on Qwen3 1.7B Base.

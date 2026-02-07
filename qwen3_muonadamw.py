@@ -491,7 +491,11 @@ def main():
         }
 
     optimizer = MuonPlusAdamW(model.named_parameters(), lr=training_args.learning_rate)
-    lr_scheduler = get_wsd_schedule(optimizer, training_args.warmup_steps, training_args.lr_scheduler_kwargs['num_decay_steps'])
+    lr_scheduler = get_wsd_schedule(
+        optimizer, 
+        training_args.warmup_steps, 
+        **training_args.lr_scheduler_kwargs,
+    )
 
     trainer = Trainer(
         model=model,
