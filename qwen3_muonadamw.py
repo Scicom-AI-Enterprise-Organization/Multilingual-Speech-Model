@@ -236,7 +236,7 @@ class MuonPlusAdamW(torch.optim.Optimizer):
         # AdamW hyperparameters
         # make sure consistent with https://huggingface.co/docs/transformers/v4.56.2/en/main_classes/trainer#transformers.TrainingArguments
         adamw_betas: tuple = (0.9, 0.999),
-        adamw_weight_decay: float = 0.0,
+        adamw_weight_decay: float = 0.1,
         adamw_eps: float = 1e-8,
         # Parameter filtering
         embed_patterns: tuple = ('embed', 'wte', 'wpe'),
