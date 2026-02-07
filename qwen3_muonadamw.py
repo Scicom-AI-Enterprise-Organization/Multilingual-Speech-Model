@@ -225,7 +225,7 @@ class MuonPlusAdamW(torch.optim.Optimizer):
 
     def __init__(
         self,
-        params: Iterable,
+        params,
         lr: float = 1e-4,
         # Muon hyperparameters
         muon_lr: Optional[float] = 1e-4,
@@ -339,7 +339,7 @@ class MuonPlusAdamW(torch.optim.Optimizer):
         )
 
     @torch.no_grad()
-    def step(self, closure: Optional[Callable] = None):
+    def step(self, closure = None):
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -491,10 +491,21 @@ def main():
         }
 
     optimizer = MuonPlusAdamW(model.named_parameters(), lr=training_args.learning_rate)
+    len_dataset = math.ceil(len(dataset) / torch.cuda.device_count())
+    len_dataloader = math.ceil(len_dataset / training_args.per_device_train_batch_size)
+    num_update_steps_per_epoch = max(
+        len_dataloader // training_args.gradient_accumulation_steps
+        + int(len_dataloader % training_args.gradient_accumulation_steps > 0),
+        1,
+    )
+    max_steps = math.ceil(training_args.num_train_epochs * num_update_steps_per_epoch)
+    print('max_steps', max_steps)
     lr_scheduler = get_wsd_schedule(
         optimizer, 
-        training_args.warmup_steps, 
-        **training_args.lr_scheduler_kwargs,
+        num_warmup_steps=training_args.warmup_steps,
+        num_decay_steps=training_args.lr_scheduler_kwargs['num_decay_steps'],
+        num_training_steps=max_steps,
+        min_lr_ratio=training_args.lr_scheduler_kwargs['min_lr_ratio'],
     )
 
     trainer = Trainer(
