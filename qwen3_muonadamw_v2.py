@@ -304,13 +304,16 @@ class MuonPlusAdamW(torch.optim.Optimizer):
         ]
 
         defaults = {"lr": lr}
+        self._muon = None
+        self._adamw = None
+        
         super().__init__(param_groups, defaults)
 
         # Store param counts for logging
         self.muon_param_count = sum(p.numel() for p in muon_params)
         self.adamw_param_count = sum(p.numel() for p in adamw_params)
 
-        # Initialize sub-optimizers
+        # Now create the actual sub-optimizers
         if muon_params:
             self._muon = torch.optim.Muon(
                 muon_params,
@@ -320,8 +323,6 @@ class MuonPlusAdamW(torch.optim.Optimizer):
                 nesterov=muon_nesterov,
                 ns_steps=muon_ns_steps,
             )
-        else:
-            self._muon = None
 
         if adamw_params:
             self._adamw = torch.optim.AdamW(
@@ -331,8 +332,6 @@ class MuonPlusAdamW(torch.optim.Optimizer):
                 weight_decay=adamw_weight_decay,
                 eps=adamw_eps,
             )
-        else:
-            self._adamw = None
 
     def __repr__(self):
         return (
@@ -375,6 +374,29 @@ class MuonPlusAdamW(torch.optim.Optimizer):
             self._muon.load_state_dict(state_dict['muon'])
         if self._adamw is not None and state_dict.get('adamw'):
             self._adamw.load_state_dict(state_dict['adamw'])
+
+    @property
+    def param_groups(self):
+        """Return combined param groups from both optimizers."""
+        # During __init__, before sub-optimizers are created, fall back to stored groups
+        if not hasattr(self, '_muon'):
+            # Access the underlying attribute directly during initialization
+            return self.__dict__.get('param_groups', [])
+        
+        if self._muon is None and self._adamw is None:
+            return self.__dict__.get('param_groups', [])
+        
+        groups = []
+        if self._muon is not None:
+            groups.extend(self._muon.param_groups)
+        if self._adamw is not None:
+            groups.extend(self._adamw.param_groups)
+        return groups
+
+    @param_groups.setter
+    def param_groups(self, value):
+        # This is needed for compatibility but we manage param_groups internally
+        pass
         
 def main():
 
@@ -542,6 +564,9 @@ def main():
         trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()
         trainer.save_state()
+    
+    print("Muon LR:", optimizer._muon.param_groups[0]['lr'] if optimizer._muon else None)
+    print("AdamW LR:", optimizer._adamw.param_groups[0]['lr'] if optimizer._adamw else None)
 
 
 def _mp_fn(index):
