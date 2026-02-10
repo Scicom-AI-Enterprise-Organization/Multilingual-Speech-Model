@@ -518,11 +518,11 @@ def main():
 
     optimizer = MuonPlusAdamW(
         model.named_parameters(), 
-        lr=1e-4,
-        muon_lr=1e-3,
+        lr=training_args.lr_scheduler_kwargs['lr'],
+        muon_lr=training_args.lr_scheduler_kwargs['lr_muon'],
         muon_momentum=0.95,
-        muon_weight_decay=0.01,
-        adamw_weight_decay=0.01,
+        muon_weight_decay=training_args.lr_scheduler_kwargs['decay'],
+        adamw_weight_decay=training_args.lr_scheduler_kwargs['decay'],
         muon_nesterov=True,
         muon_ns_steps=5,
     )
