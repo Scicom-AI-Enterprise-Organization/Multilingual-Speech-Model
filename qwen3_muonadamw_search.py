@@ -555,16 +555,8 @@ def main():
         optimizers=(optimizer, lr_scheduler),
     )
 
-    if training_args.do_train:
-        checkpoint = None
-        if training_args.resume_from_checkpoint is not None:
-            checkpoint = training_args.resume_from_checkpoint
-        elif last_checkpoint is not None:
-            checkpoint = last_checkpoint
-        trainer.train(resume_from_checkpoint=checkpoint)
-        trainer.save_model()
-        trainer.save_state()
-    
+    trainer.train()
+  
     print("Muon LR:", optimizer._muon.param_groups[0]['lr'] if optimizer._muon else None)
     print("AdamW LR:", optimizer._adamw.param_groups[0]['lr'] if optimizer._adamw else None)
 

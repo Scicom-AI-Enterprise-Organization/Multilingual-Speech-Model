@@ -15,7 +15,7 @@ torchrun --nproc_per_node 8 \
 --model_name_or_path "Qwen/Qwen3-1.7B-Base" \
 --per_device_train_batch_size 8 \
 --gradient_accumulation_steps 32 \
---output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-float32-muonadamw-wsdlr-v2 \
+--output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-float32-muonadamw-wsdlr-search-{lr_}-{lr_muon_}-{decay_} \
 --bf16 --do_train --do_eval false --max_steps 100 \
 --train_file "gfs/01be5b33/combine-multipacking" \
 --logging_steps 1 \
