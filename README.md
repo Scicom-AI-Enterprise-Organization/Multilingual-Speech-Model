@@ -14,7 +14,7 @@ Building actual open source including dataset multilingual TTS more than 150 lan
 
 1. Use [neucodec](https://github.com/neuphonic/neucodec) as speech tokenizer, 50 TPS, output in 24k sample rate.
 2. Multi-speaker multilingual Voice Conversion, **up to 35.88B tokens**.
-3. Multi-speaker multilingual TTS more than 150 languages
+3. Multi-speaker multilingual TTS more than 150 languages, **up to 14.64B tokens**.
 
 ### Preparation
 
