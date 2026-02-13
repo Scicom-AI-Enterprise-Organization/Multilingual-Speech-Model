@@ -13,7 +13,7 @@ Building actual open source including dataset multilingual TTS more than 150 lan
 ### Size
 
 1. Use [neucodec](https://github.com/neuphonic/neucodec) as speech tokenizer, 50 TPS, output in 24k sample rate.
-2. Multi-speaker multilingual Voice Conversion
+2. Multi-speaker multilingual Voice Conversion, **up to 35.88B tokens**.
 3. Multi-speaker multilingual TTS more than 150 languages
 
 ### Preparation
@@ -28,6 +28,8 @@ All steps to reproduce in [preparation](preparation).
 3. Warmup step is 100.
 4. Compare AdamW with WSD learning rate, Muon + AdamW with WSD learning rate, where WSD number decay step is 10% of the dataset.
 5. Only done on Qwen3 1.7B Base.
+
+<img src="one-epoch.png" width="50%">
 
 ### Hyperparameter search
 
