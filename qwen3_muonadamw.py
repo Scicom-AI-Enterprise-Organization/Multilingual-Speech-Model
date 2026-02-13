@@ -304,13 +304,16 @@ class MuonPlusAdamW(torch.optim.Optimizer):
         ]
 
         defaults = {"lr": lr}
+        self._muon = None
+        self._adamw = None
+        
         super().__init__(param_groups, defaults)
 
         # Store param counts for logging
         self.muon_param_count = sum(p.numel() for p in muon_params)
         self.adamw_param_count = sum(p.numel() for p in adamw_params)
 
-        # Initialize sub-optimizers
+        # Now create the actual sub-optimizers
         if muon_params:
             self._muon = torch.optim.Muon(
                 muon_params,
@@ -320,8 +323,6 @@ class MuonPlusAdamW(torch.optim.Optimizer):
                 nesterov=muon_nesterov,
                 ns_steps=muon_ns_steps,
             )
-        else:
-            self._muon = None
 
         if adamw_params:
             self._adamw = torch.optim.AdamW(
@@ -331,8 +332,6 @@ class MuonPlusAdamW(torch.optim.Optimizer):
                 weight_decay=adamw_weight_decay,
                 eps=adamw_eps,
             )
-        else:
-            self._adamw = None
 
     def __repr__(self):
         return (
@@ -375,6 +374,29 @@ class MuonPlusAdamW(torch.optim.Optimizer):
             self._muon.load_state_dict(state_dict['muon'])
         if self._adamw is not None and state_dict.get('adamw'):
             self._adamw.load_state_dict(state_dict['adamw'])
+
+    @property
+    def param_groups(self):
+        """Return combined param groups from both optimizers."""
+        # During __init__, before sub-optimizers are created, fall back to stored groups
+        if not hasattr(self, '_muon'):
+            # Access the underlying attribute directly during initialization
+            return self.__dict__.get('param_groups', [])
+        
+        if self._muon is None and self._adamw is None:
+            return self.__dict__.get('param_groups', [])
+        
+        groups = []
+        if self._muon is not None:
+            groups.extend(self._muon.param_groups)
+        if self._adamw is not None:
+            groups.extend(self._adamw.param_groups)
+        return groups
+
+    @param_groups.setter
+    def param_groups(self, value):
+        # This is needed for compatibility but we manage param_groups internally
+        pass
         
 def main():
 
@@ -494,7 +516,16 @@ def main():
             'max_length_k': max_seqlen_q
         }
 
-    optimizer = MuonPlusAdamW(model.named_parameters(), lr=training_args.learning_rate)
+    optimizer = MuonPlusAdamW(
+        model.named_parameters(), 
+        lr=training_args.lr_scheduler_kwargs['lr'],
+        muon_lr=training_args.lr_scheduler_kwargs['lr_muon'],
+        muon_momentum=0.95,
+        muon_weight_decay=training_args.lr_scheduler_kwargs['decay'],
+        adamw_weight_decay=training_args.lr_scheduler_kwargs['decay'],
+        muon_nesterov=True,
+        muon_ns_steps=5,
+    )
     len_dataset = math.ceil(len(dataset) / torch.cuda.device_count())
     len_dataloader = math.ceil(len_dataset / training_args.per_device_train_batch_size)
     num_update_steps_per_epoch = max(

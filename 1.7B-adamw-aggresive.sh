@@ -1,18 +1,18 @@
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 WANDB_PROJECT="Multilingual-TTS" \
-WANDB_NAME="Qwen3-1.7B-float32-muonadamw-wsdlr-v2" \
+WANDB_NAME="Qwen3-1.7B-float32-adamw-wsdlr-0.001" \
 TORCH_DISTRIBUTED_DEBUG="info" \
 torchrun --nproc_per_node 8 \
--m qwen3_muonadamw_v2 \
+-m qwen3_adamw \
 --model_name_or_path "Qwen/Qwen3-1.7B-Base" \
 --per_device_train_batch_size 8 \
 --gradient_accumulation_steps 32 \
---output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-float32-muonadamw-wsdlr-v2 \
---bf16 --do_train --do_eval false --num_train_epochs 1 \
+--output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-float32-adamw-wsdlr-0.001 \
+--bf16 --do_train --do_eval false --max_steps 100 \
 --train_file "gfs/01be5b33/combine-multipacking" \
 --logging_steps 1 \
---learning_rate 1e-4 \
---warmup_steps 100 \
+--learning_rate 1e-3 \
+--warmup_steps 50 \
 --block_size 10240 \
 --save_steps 500 \
 --save_total_limit 10 \

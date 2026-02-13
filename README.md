@@ -28,13 +28,21 @@ All steps to reproduce in [preparation](preparation).
 3. Warmup step is 100.
 4. Compare AdamW with WSD learning rate, Muon + AdamW with WSD learning rate, where WSD number decay step is 10% of the dataset.
 5. Only done on Qwen3 1.7B Base.
+6. AdamW performed better.
 
 <img src="one-epoch.png" width="50%">
 
 ### Hyperparameter search
+
+But we not satisfied with one epoch ablation due to learning rates are not aggressive enough.
 
 1. Use approximate of 10240 * 256 * 8 GPUs global token size, ~20,971,520 tokens.
 2. 100 steps only.
 3. Warmup step is 50.
 4. Only done on Qwen3 1.7B Base.
 5. Permute search on LR for AdamW, LR for Muon and decay rate, [hyperparameter_search.py](hyperparameter_search.py)
+6. We run aggresive LR, [hyperparameter_search_extra.py](hyperparameter_search_extra.py), turns out its the best.
+7. We compare using AdamW only using the same aggresive LR as (6), [1.7B-adamw-aggresive.sh](1.7B-adamw-aggresive.sh).
+8. Adding Muon performed better.
+
+<img src="hyperparameter-search.png" width="50%">
