@@ -55,6 +55,8 @@ But we not satisfied with one epoch ablation due to learning rates are not aggre
 bash 1.7B.sh
 ```
 
+Model released at https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base
+
 ### 4B
 
 ```bash
