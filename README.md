@@ -46,3 +46,21 @@ But we not satisfied with one epoch ablation due to learning rates are not aggre
 8. Adding Muon performed better.
 
 <img src="hyperparameter-search.png" width="50%">
+
+## Continue Pretraining Base
+
+### 1.7B
+
+```bash
+bash 1.7B.sh
+```
+
+### 4B
+
+```bash
+bash 4B.sh
+```
+
+## WanDB
+
+All experiments at https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS
