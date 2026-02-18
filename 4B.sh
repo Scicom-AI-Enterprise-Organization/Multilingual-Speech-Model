@@ -1,6 +1,6 @@
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 WANDB_PROJECT="Multilingual-TTS" \
-WANDB_NAME="Qwen3-4B-float32-1.0" \
+WANDB_NAME="Qwen3-4B-bfloat16-1.0" \
 TORCH_DISTRIBUTED_DEBUG="info" \
 torchrun --nproc_per_node 8 \
 -m qwen3_muonadamw \
@@ -17,7 +17,7 @@ torchrun --nproc_per_node 8 \
 --save_steps 50 \
 --save_total_limit 10 \
 --gradient_checkpointing true \
---torch_dtype float32 \
+--torch_dtype bfloat16 \
 --ddp_find_unused_parameters false \
 --dataloader_num_workers 5 \
 --dataloader_prefetch_factor 20 \
