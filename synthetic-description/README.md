@@ -12,14 +12,8 @@ wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/h
 unzip haqkiem-TTS_audio.zip
 ```
 
-2. Calculate speech statistics,
+2. Calculate speech statistics and categories,
 
 ```bash
-python3 speech_stats.py --file 'haqkiem.parquet' --language 'ms'
-```
-
-3. Predict speech categories,
-
-```bash
-python3 speech_categories.py --file 'haqkiem.parquet'
+python3 speech_categories.py --file 'haqkiem.parquet' --language 'ms'
 ```

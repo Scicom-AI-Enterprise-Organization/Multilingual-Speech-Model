@@ -53,6 +53,12 @@ def loop(
         predict_sex_age,
         predict_emotion,
     )
+    from speech_stats_func import (
+        rate_apply,
+        pitch_apply,
+        snr_apply,
+        squim_apply,
+    )
 
     for r in tqdm(rows):    
         f = r['audio_filename']
@@ -72,7 +78,11 @@ def loop(
         accent = predict_accent(y)
         sex_age = predict_sex_age(y)
         emotion = predict_emotion(y)
-        new_r = {**r, **fluency, **quality, **accent, **sex_age, **emotion}
+        pitch = pitch_apply(y, sr)
+        snr = snr_apply(y, sr)
+        squim = squim_apply(y, sr)
+        rate = rate_apply(t, language, snr['vad_duration'])
+        new_r = {**r, **fluency, **quality, **accent, **sex_age, **emotion, **pitch, **snr, **squim, **rate}
         os.makedirs(os.path.split(filename)[0], exist_ok = True)
         with open(filename, 'w') as fopen:
             json.dump(new_r, fopen)

@@ -22,7 +22,7 @@ disfluency_type_labels = [
     "Interjection"
 ]
 
-quality_labels = [
+voice_quality_label_list = [
     'shrill', 'nasal', 'deep',  # Pitch
     'silky', 'husky', 'raspy', 'guttural', 'vocal-fry', # Texture
     'booming', 'authoritative', 'loud', 'hushed', 'soft', # Volume
@@ -99,7 +99,13 @@ def predict_quality(audio):
     with torch.no_grad():
         audio_data = torch.from_numpy(audio)[None]
         logits = quality_model(audio_data, return_feature=False)
-        return {'quality': quality_labels[logits.argmax(-1)[0]]}
+        voice_quality_prob = nn.Sigmoid()(torch.tensor(logits))
+        voice_label = list()
+        threshold = 0.7
+        predictions = (voice_quality_prob > threshold).int().detach().cpu().numpy()[0].tolist()
+        for label_idx in range(len(predictions)):
+            if predictions[label_idx] == 1: voice_label.append(voice_quality_label_list[label_idx])
+        return {'quality': voice_label}
 
 def predict_accent(audio):
     with torch.no_grad():
