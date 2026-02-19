@@ -1,0 +1,5 @@
+.claude
+*__pycache__
+*.parquet
+*_audio
+*_audio_speech_stats
