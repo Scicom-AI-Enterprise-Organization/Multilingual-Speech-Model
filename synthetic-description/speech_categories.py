@@ -116,15 +116,16 @@ def main(file, replication, language):
                 pass
         filtered.append(r)
 
-    df_split = list(chunks(filtered, devices))
+    if len(filtered):
+        df_split = list(chunks(filtered, devices))
 
-    loop_partial = partial(
-        loop,
-        language=language,
-    )
+        loop_partial = partial(
+            loop,
+            language=language,
+        )
 
-    with Pool(len(devices)) as pool:
-        pooled = pool.map(loop_partial, df_split)
+        with Pool(len(devices)) as pool:
+            pooled = pool.map(loop_partial, df_split)
 
 if __name__ == '__main__':
     main()

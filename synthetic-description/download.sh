@@ -19,7 +19,7 @@ unzip -o nusantara-audiobook_audio.zip
 rm nusantara-audiobook_audio.zip
 
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/gemini-flash-2.0-speech_data_audio.zip
-wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/gemini-flash-2.0-speech/train-00000-of-00001.parquet -O gemini-flash-2.0-speech.zip
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/gemini-flash-2.0-speech/train-00000-of-00001.parquet -O gemini-flash-2.0-speech.parquet
 unzip -o gemini-flash-2.0-speech_data_audio.zip
 rm gemini-flash-2.0-speech_data_audio.zip
 
@@ -47,11 +47,13 @@ wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/g
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/genshin-voice/train-00000-of-00001.parquet -O genshin-voice.parquet
 unzip -o genshin-voice_audio.zip
 rm genshin-voice_audio.zip
+python3 sampling.py --file 'genshin-voice.parquet' --max_row 20000
 
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/japanese-anime-speech-v2_data_audio.zip
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/japanese-anime-speech-v2/train-00000-of-00001.parquet -O japanese-anime-speech-v2.parquet
 unzip -o japanese-anime-speech-v2_data_audio.zip
 rm japanese-anime-speech-v2_data_audio.zip
+python3 sampling.py --file 'japanese-anime-speech-v2.parquet' --max_row 20000
 
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/indian_accent_english_audio.zip
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/indian_accent_english/train-00000-of-00001.parquet -O indian_accent_english.parquet
@@ -82,3 +84,44 @@ wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/A
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/AnimeVox/train-00000-of-00001.parquet -O AnimeVox.parquet
 unzip -o AnimeVox_audio.zip
 rm AnimeVox_audio.zip
+
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/cml-tts/train-00000-of-00001.parquet -O cml-tts.parquet
+python3 sampling_folder.py --file 'cml-tts.parquet' --max_row 20000
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_dutch_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_dutch_audio.zip
+rm cml-tts_dutch_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_french_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_french_audio.zip
+rm cml-tts_french_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_german_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_german_audio.zip
+rm cml-tts_german_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_italian_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_italian_audio.zip
+rm cml-tts_italian_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_polish_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_polish_audio.zip
+rm cml-tts_polish_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_portuguese_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_portuguese_audio.zip
+rm cml-tts_portuguese_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+HF_HUB_ENABLE_HF_TRANSFER=1 hf download malaysia-ai/Multilingual-TTS cml-tts_spanish_audio.zip --repo-type=dataset --local-dir=./
+unzip -o cml-tts_spanish_audio.zip
+rm cml-tts_spanish_audio.zip
+python3 trim_audio.py --file 'cml-tts.parquet' --kept_file 'cml-tts_kept.json'
+
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/elevenlabs_audio.zip
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/elevenlabs_ru/train-00000-of-00001.parquet -O elevenlabs_ru.parquet
+unzip -o elevenlabs_audio.zip
+rm elevenlabs_audio.zip
+
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/ru_book_dataset_audio.zip
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/ru_book_dataset/train-00000-of-00001.parquet -O ru_book_dataset.parquet
+unzip -o ru_book_dataset_audio.zip
+rm ru_book_dataset_audio.zip

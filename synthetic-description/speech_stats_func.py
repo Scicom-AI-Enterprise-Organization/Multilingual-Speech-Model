@@ -20,7 +20,17 @@ languages = {
     'chinese': 'zho-s',
     'latin': 'lat-clas',
     'vietnamese': 'vie-c',
-    'turkish': 'tur'
+    'turkish': 'tur',
+    'japanese': 'jpn',
+    'dutch': 'dut',
+    'french': 'fra',
+    'german': 'ger',
+    'italian': 'ita',
+    'polish': 'pol',
+    'portuguese': 'por-po',
+    'spanish': 'spa',
+    'hungarian': 'hun',
+    'russian': 'rus',
 }
 
 split_by_lang = {
@@ -31,7 +41,17 @@ split_by_lang = {
     'chinese': 'char',
     'latin': 'space',
     'vietnamese': 'space',
-    'turkish': 'space'
+    'turkish': 'space',
+    'japanese': 'char',
+    'dutch': 'space',
+    'french': 'space',
+    'german': 'space',
+    'italian': 'space',
+    'polish': 'space',
+    'portuguese': 'space',
+    'spanish': 'space',
+    'hungarian': 'space',
+    'russian': 'space'
 }
 
 # Here we'll use a 10 millisecond hopsize
@@ -85,14 +105,52 @@ model_brouhaha = None
 pipeline = None
 model_squim = None
 
+def is_cjk(ch):
+    cp = ord(ch)
+    return (
+        0x4E00 <= cp <= 0x9FFF or   # CJK Unified Ideographs
+        0x3400 <= cp <= 0x4DBF or   # CJK Extension A
+        0x20000 <= cp <= 0x2A6DF or # CJK Extension B
+        0x3040 <= cp <= 0x309F or   # Hiragana
+        0x30A0 <= cp <= 0x30FF or   # Katakana
+        0xAC00 <= cp <= 0xD7AF or   # Hangul Syllables
+        0x1100 <= cp <= 0x11FF      # Hangul Jamo
+    )
+
+def split_multilingual(text):
+    """Split text by character type: CJK characters are individual tokens,
+    non-CJK sequences are split by whitespace."""
+    tokens = []
+    current_word = []
+    for ch in text:
+        if ch.isspace():
+            if current_word:
+                tokens.append(''.join(current_word))
+                current_word = []
+        elif is_cjk(ch):
+            if current_word:
+                tokens.append(''.join(current_word))
+                current_word = []
+            tokens.append(ch)
+        else:
+            current_word.append(ch)
+    if current_word:
+        tokens.append(''.join(current_word))
+    return tokens
+
 def rate_apply(text, lang, audio_length):
     global model, tokenizer
+
+    text = clean_text(text)
+
+    if lang in ['multilingual', 'urdu']:
+        tokens = split_multilingual(text)
+        speaking_rate = len(tokens) / audio_length
+        return {'phonemes': tokens, 'speaking_rate': speaking_rate}
 
     if model is None:
         model = T5ForConditionalGeneration.from_pretrained('charsiu/g2p_multilingual_byT5_tiny_16_layers_100')
         tokenizer = AutoTokenizer.from_pretrained('google/byt5-small')
-
-    text = clean_text(text)
 
     split_by = split_by_lang.get(lang, 'space')
     if split_by == 'space':
@@ -100,14 +158,13 @@ def rate_apply(text, lang, audio_length):
     else:
         words = list(text)
 
-    lang = languages.get(lang, lang)
-    
-    words = [f'<{lang}>: '+ i for i in words]
-    
-    out = tokenizer(words,padding=True,add_special_tokens=False,return_tensors='pt')
-    preds = model.generate(**out,num_beams=1,max_length=128)
-    phones = tokenizer.batch_decode(preds.tolist(),skip_special_tokens=True)
-    
+    lang_code = languages.get(lang, lang)
+    words = [f'<{lang_code}>: ' + i for i in words]
+
+    out = tokenizer(words, padding=True, add_special_tokens=False, return_tensors='pt')
+    preds = model.generate(**out, num_beams=1, max_length=128)
+    phones = tokenizer.batch_decode(preds.tolist(), skip_special_tokens=True)
+
     speaking_rate = len(phones) / audio_length
     return {'phonemes': phones, 'speaking_rate': speaking_rate}
 
