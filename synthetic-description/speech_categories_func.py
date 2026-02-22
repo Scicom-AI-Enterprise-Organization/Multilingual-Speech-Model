@@ -8,10 +8,63 @@ from funasr import AutoModel
 from vox_profile.model.fluency.whisper_fluency import WhisperWrapper as WhisperFluency
 from vox_profile.model.voice_quality.whisper_voice_quality import WhisperWrapper as WhisperQuality
 from vox_profile.model.accent.whisper_accent import WhisperWrapper as WhisperAccent
-from vox_profile.model.age_sex.wavlm_demographics import WavLMWrapper as WavLMAge
 import math
 from huggingface_hub import PyTorchModelHubMixin
 from typing import Optional
+from transformers import Wav2Vec2Processor
+from transformers.models.wav2vec2.modeling_wav2vec2 import (
+    Wav2Vec2Model,
+    Wav2Vec2PreTrainedModel,
+)
+
+class ModelHead(nn.Module):
+    r"""Classification head."""
+
+    def __init__(self, config, num_labels):
+
+        super().__init__()
+
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
+        self.dropout = nn.Dropout(config.final_dropout)
+        self.out_proj = nn.Linear(config.hidden_size, num_labels)
+
+    def forward(self, features, **kwargs):
+
+        x = features
+        x = self.dropout(x)
+        x = self.dense(x)
+        x = torch.tanh(x)
+        x = self.dropout(x)
+        x = self.out_proj(x)
+
+        return x
+
+
+class AgeGenderModel(Wav2Vec2PreTrainedModel):
+    r"""Speech emotion classifier."""
+
+    def __init__(self, config):
+
+        super().__init__(config)
+
+        self.config = config
+        self.wav2vec2 = Wav2Vec2Model(config)
+        self.age = ModelHead(config, 1)
+        self.gender = ModelHead(config, 3)
+        self.init_weights()
+
+    def forward(
+            self,
+            input_values,
+    ):
+
+        outputs = self.wav2vec2(input_values)
+        hidden_states = outputs[0]
+        hidden_states = torch.mean(hidden_states, dim=1)
+        logits_age = self.age(hidden_states)
+        logits_gender = torch.softmax(self.gender(hidden_states), dim=1)
+
+        return hidden_states, logits_age, logits_gender
 
 # https://huggingface.co/spaces/JaesungHuh/voice-gender-classifier/blob/main/model.py
 class SEModule(nn.Module):
@@ -199,18 +252,19 @@ english_accent_list = [
     'South African', 'Southeast Asia', 'South Asia', 'Welsh'
 ]
 
-sex_unique_labels = ["Female", "Male"]
-
 device = torch.device('cuda')
 
 fluency_model = WhisperFluency.from_pretrained("tiantiaf/whisper-large-v3-speech-flow").to(device).eval()
 quality_model = WhisperQuality.from_pretrained("tiantiaf/whisper-large-v3-voice-quality").to(device).eval()
 accent_model = WhisperAccent.from_pretrained("tiantiaf/whisper-large-v3-narrow-accent").to(device).eval()
-wavlm_model = WavLMAge.from_pretrained("tiantiaf/wavlm-large-age-sex").to(device).eval()
 
 emotion = AutoModel(model="iic/emotion2vec_plus_large")
 gender_model = ECAPA_gender.from_pretrained('JaesungHuh/ecapa-gender').to(device).eval()
 gender_model.create_melspectrogram(device)
+
+model_name = 'audeering/wav2vec2-large-robust-24-ft-age-gender'
+processor = Wav2Vec2Processor.from_pretrained(model_name)
+agegender_model = AgeGenderModel.from_pretrained(model_name).to(device).eval()
 
 _SEGMENT_SIZE = 3 * 16000
 
@@ -277,10 +331,18 @@ def predict_accent(audio):
 
 def predict_sex_age(audio):
     with torch.no_grad(), torch.autocast('cuda'):
-        audio_data = torch.from_numpy(audio)[None].to(device)
-        wavlm_age_outputs, wavlm_sex_outputs = wavlm_model(audio_data)
-        age_pred = wavlm_age_outputs.float().detach().cpu().numpy() * 100
-        return {'sex': sex_unique_labels[wavlm_sex_outputs.argmax(-1)[0]], 'age': int(age_pred[0])}
+        y = processor(y, sampling_rate=16000)
+        y = y['input_values'][0]
+        y = y.reshape(1, -1)
+        y = torch.from_numpy(y).to(device)
+        y = agegender_model(y)
+        y = torch.hstack([y[1], y[2]])
+        y = y.detach().cpu().numpy()
+    
+    labels = ['female', 'male', 'child']
+    label = labels[y[0,1:].argmax(-1)]
+    age = int(y[0, 0] * 100)
+    return {'sex': label, 'age': age}
 
 def predict_gender(audio):
     with torch.no_grad(), torch.autocast('cuda'):
