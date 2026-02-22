@@ -125,3 +125,22 @@ wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/r
 wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/ru_book_dataset/train-00000-of-00001.parquet -O ru_book_dataset.parquet
 unzip -o ru_book_dataset_audio.zip
 rm ru_book_dataset_audio.zip
+
+hf download malaysia-ai/Multilingual-TTS --include google-*_audio.zip --repo-type=dataset --local-dir=./
+wget https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS/resolve/main/google_audio/train-00000-of-00001.parquet -O google.parquet
+unzip -o google-argentinian-spanish_audio.zip
+rm google-argentinian-spanish_audio.zip 
+unzip -o google-chilean-spanish_audio.zip
+rm google-chilean-spanish_audio.zip
+unzip -o google-marathi_audio.zip
+rm google-marathi_audio.zip
+unzip -o google-argentinian-spanish_female_audio.zip
+rm google-argentinian-spanish_female_audio.zip
+unzip -o google-colombian-spanish_audio.zip
+rm google-colombian-spanish_audio.zip
+unzip -o google-tamil_audio.zip
+rm google-tamil_audio.zip
+unzip -o google-argentinian-spanish_male_audio.zip
+rm google-argentinian-spanish_male_audio.zip
+unzip -o google-gujarati_audio.zip
+rm google-gujarati_audio.zip

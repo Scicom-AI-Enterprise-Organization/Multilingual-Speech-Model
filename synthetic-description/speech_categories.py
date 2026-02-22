@@ -51,6 +51,7 @@ def loop(
         predict_quality,
         predict_accent,
         predict_sex_age,
+        predict_gender,
         predict_emotion,
     )
     from speech_stats_func import (
@@ -77,12 +78,13 @@ def loop(
         quality = predict_quality(y)
         accent = predict_accent(y)
         sex_age = predict_sex_age(y)
+        gender = predict_gender(y)
         emotion = predict_emotion(y)
         pitch = pitch_apply(y, sr)
         snr = snr_apply(y, sr)
         squim = squim_apply(y, sr)
         rate = rate_apply(t, language, snr['vad_duration'])
-        new_r = {**r, **fluency, **quality, **accent, **sex_age, **emotion, **pitch, **snr, **squim, **rate}
+        new_r = {**r, **fluency, **quality, **accent, **sex_age, **gender, **emotion, **pitch, **snr, **squim, **rate}
         os.makedirs(os.path.split(filename)[0], exist_ok = True)
         with open(filename, 'w') as fopen:
             json.dump(new_r, fopen)

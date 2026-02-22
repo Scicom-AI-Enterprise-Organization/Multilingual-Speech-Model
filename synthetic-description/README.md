@@ -23,8 +23,7 @@ python3 speech_categories.py --file 'haqkiem.parquet' --language 'ms'
 3. Calculate bins for speech statistics and add the columns,
 
 ```bash
-python3 calculate_bins.py --pattern 'haqkiem-TTS_audio_speech_categories/*.json' --output 'bins.json'
-python3 add_column.py --pattern 'haqkiem-TTS_audio_speech_categories/*.json' --output 'categorized_haqkiem.parquet'
+python3 calculate_bins.py --pattern 'haqkiem-TTS_audio_speech_categories/*.json' --output 'output.parquet'
 ```
 
 ### Larger scale
@@ -33,5 +32,5 @@ python3 add_column.py --pattern 'haqkiem-TTS_audio_speech_categories/*.json' --o
 2. Calculate global statistics,
 
 ```bash
-python3 calculate_bins.py --pattern '*_speech_categories/*.json' --output 'bins.json'
+python3 calculate_bins.py --pattern '*_speech_categories/*.json' --output 'output.parquet'
 ```
