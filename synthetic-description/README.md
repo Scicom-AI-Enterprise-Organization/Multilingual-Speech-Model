@@ -26,6 +26,14 @@ python3 speech_categories.py --file 'haqkiem.parquet' --language 'ms'
 python3 calculate_bins.py --pattern 'haqkiem-TTS_audio_speech_categories/*.json' --output 'output.parquet'
 ```
 
+4. Generate synthetic description,
+
+```bash
+python3 synthetic.py --file 'output.parquet' --folder 'output'
+```
+
+I use https://deepinfra.com/Qwen/Qwen2.5-72B-Instruct, feel free to replace to any OpenAI compatible model.
+
 ### Larger scale
 
 1. Check [download.sh](download.sh) and [process.sh](process.sh) how we scale to bigger dataset
@@ -33,4 +41,10 @@ python3 calculate_bins.py --pattern 'haqkiem-TTS_audio_speech_categories/*.json'
 
 ```bash
 python3 calculate_bins.py --pattern '*_speech_categories/*.json' --output 'output.parquet'
+```
+
+3. Generate synthetic description,
+
+```bash
+python3 synthetic.py --file 'output.parquet' --folder 'output'
 ```

@@ -68,3 +68,8 @@ bash 4B.sh
 ## WanDB
 
 All experiments at https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS
+
+## Acknowledgement
+
+1. Thanks to [Malaysia-AI](https://huggingface.co/malaysia-ai) for gathering huge dataset for TTS, https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS
+2. Thanks to [Scitix](https://www.scitix.ai/) for H100 node access!
