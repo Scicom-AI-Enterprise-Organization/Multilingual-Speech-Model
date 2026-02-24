@@ -65,6 +65,8 @@ Model released at https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base
 bash 4B.sh
 ```
 
+Model released at https://huggingface.co/Scicom-intl/Multilingual-TTS-4B-Base
+
 ## WanDB
 
 All experiments at https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS

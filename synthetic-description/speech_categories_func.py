@@ -287,7 +287,7 @@ def predict_fluency(audio):
     input_audio = torch.stack(segments, dim=0)
     input_audio_length = torch.tensor(lengths, device=device)
 
-    with torch.no_grad(), torch.autocast('cuda'):
+    with torch.no_grad():
         fluency_outputs, disfluency_outputs = fluency_model(input_audio, length=input_audio_length)
         fluency_prob = F.softmax(fluency_outputs.float(), dim=1).cpu().numpy().astype(float).tolist()
         disfluency_prob = torch.sigmoid(disfluency_outputs.float())
@@ -314,7 +314,7 @@ def predict_fluency(audio):
     return {'fluency': r}
 
 def predict_quality(audio):
-    with torch.no_grad(), torch.autocast('cuda'):
+    with torch.no_grad():
         audio_data = torch.from_numpy(audio)[None].to(device)
         logits = quality_model(audio_data, return_feature=False)
         voice_quality_prob = torch.sigmoid(torch.tensor(logits, dtype=torch.float32))
@@ -324,13 +324,13 @@ def predict_quality(audio):
         return {'quality': voice_label}
 
 def predict_accent(audio):
-    with torch.no_grad(), torch.autocast('cuda'):
+    with torch.no_grad():
         audio_data = torch.from_numpy(audio)[None].to(device)
         logits = accent_model(audio_data, return_feature=False)
         return {'accent': english_accent_list[logits.argmax(-1)[0]]}
 
 def predict_sex_age(audio):
-    with torch.no_grad(), torch.autocast('cuda'):
+    with torch.no_grad():
         y = processor(y, sampling_rate=16000)
         y = y['input_values'][0]
         y = y.reshape(1, -1)
@@ -345,7 +345,7 @@ def predict_sex_age(audio):
     return {'sex': label, 'age': age}
 
 def predict_gender(audio):
-    with torch.no_grad(), torch.autocast('cuda'):
+    with torch.no_grad():
         return {'gender': gender_model.predict(audio)}
 
 def predict_emotion(audio):
