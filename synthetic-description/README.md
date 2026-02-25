@@ -45,6 +45,14 @@ python3 calculate_bins.py --pattern '*_speech_categories/*.json' --output 'outpu
 
 3. Generate synthetic description,
 
+Run vLLM,
+
 ```bash
-python3 synthetic.py --file 'output.parquet' --folder 'output'
+hf download mesolitica/Qwen2.5-72B-Instruct-FP8 --local-dir=./Qwen2.5-72B-Instruct-FP8
+vllm serve "Qwen2.5-72B-Instruct-FP8" --tensor-parallel 8 --max-model-len 4096
+```
+
+```bash
+API_KEY="-" BASE_URL="http://localhost:8000/v1" MODEL_NAME="Qwen2.5-72B-Instruct-FP8" \
+python3 synthetic.py --file 'output.parquet' --folder 'output-synthetic'
 ```

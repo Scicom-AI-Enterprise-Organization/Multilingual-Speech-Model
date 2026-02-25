@@ -14,8 +14,6 @@ REVERBERATION_BINS = ["very roomy sounding", "quite roomy sounding", "slightly r
 UTTERANCE_LEVEL_STD = ["very monotone", "quite monotone", "slightly monotone", "moderate intonation", "slightly expressive", "quite expressive", "very expressive"]
 SI_SDR_BINS = ["extremely noisy", "very noisy", "noisy", "slightly noisy", "almost no noise", "very clear"]
 PESQ_BINS = ["very bad speech quality", "bad speech quality", "slightly bad speech quality", "moderate speech quality", "great speech quality", "wonderful speech quality"]
-
-# this one is supposed to be apply to speaker-level mean pitch, and relative to gender
 SPEAKER_LEVEL_PITCH_BINS = ["very low pitch", "quite low pitch", "slightly low pitch", "moderate pitch", "slightly high pitch", "quite high pitch", "very high pitch"]
 
 def chunks(l, n):
@@ -84,6 +82,13 @@ def main(pattern, output):
         values = df[key].tolist()
         bin_edges = bins_to_text(values, bins)
         df[label_col] = get_labels(values, bin_edges, bins)
+
+    # pitch_label must be binned per gender since male/female pitch ranges differ
+    df['pitch_label'] = ''
+    for gender, group in df.groupby('gender'):
+        values = group['pitch_mean'].tolist()
+        bin_edges = bins_to_text(values, SPEAKER_LEVEL_PITCH_BINS)
+        df.loc[group.index, 'pitch_label'] = get_labels(values, bin_edges, SPEAKER_LEVEL_PITCH_BINS)
 
     df['fluency'] = df['fluency'].apply(json.dumps)
     df['quality'] = df['quality'].apply(lambda q: [p for p in q if p is not None])

@@ -331,7 +331,7 @@ def predict_accent(audio):
 
 def predict_sex_age(audio):
     with torch.no_grad():
-        y = processor(y, sampling_rate=16000)
+        y = processor(audio, sampling_rate=16000)
         y = y['input_values'][0]
         y = y.reshape(1, -1)
         y = torch.from_numpy(y).to(device)
@@ -346,7 +346,7 @@ def predict_sex_age(audio):
 
 def predict_gender(audio):
     with torch.no_grad():
-        return {'gender': gender_model.predict(audio)}
+        return {'gender': gender_model.predict(audio, device)}
 
 def predict_emotion(audio):
     o = emotion.generate(audio)[0]

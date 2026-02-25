@@ -3,6 +3,7 @@ import requests
 import os
 import json
 import requests
+import pandas as pd
 from functools import partial
 from multiprocess import Pool
 from tqdm import tqdm
@@ -81,7 +82,7 @@ def loop(
     }
 
     for r in tqdm(rows):
-        filename = os.path.join(folder, r['index'] + '.json')
+        filename = os.path.join(folder, str(r['index']) + '.json')
         try:
             with open(filename) as fopen:
                 json.load(fopen)
@@ -89,7 +90,7 @@ def loop(
         except:
             pass
 
-        fluency = json.loads(row['fluency'])
+        fluency = json.loads(r['fluency'])
         fluency_label = []
         for i in range(len(fluency['timestamp'])):
             start = fluency['timestamp'][i][0]
@@ -103,7 +104,7 @@ def loop(
 based on audio attributes,
 fluency timestamp: {fluency_label}
 accent: {r['accent']}
-gender: {r['sex']}
+gender: {r['gender']}
 age: {r['age']}
 emotion: {r['emotion']}
 speed: {r['speaking_rate_label']}
@@ -137,6 +138,9 @@ generate expressive description for the audio,
         response = response.json()['choices'][0]['message']['content']
         
         os.makedirs(os.path.split(filename)[0], exist_ok = True)
+        columns = ['quality', 'phonemes']
+        for c in columns:
+            r[c] = r[c].tolist()
         new_r = {**r, 'description': response, 'description_category': category_response}
         with open(filename, 'w') as fopen:
             json.dump(new_r, fopen)
@@ -153,7 +157,7 @@ def main(file, replication, folder):
     rows = df.to_dict(orient='records')
     filtered = []
     for r in tqdm(rows): 
-        filename = os.path.join(folder, r['index'] + '.json')
+        filename = os.path.join(folder, str(r['index']) + '.json')
         if os.path.exists(filename):
             try:
                 with open(filename) as fopen:

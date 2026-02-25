@@ -1,22 +1,22 @@
-python3 speech_categories.py --file 'haqkiem.parquet' --language 'ms'
-python3 speech_categories.py --file 'hindi_ai4bharat_indictts.parquet' --language 'ta'
-python3 speech_categories.py --file 'Emilia-NV.parquet' --language 'chinese'
-python3 speech_categories.py --file 'malay-audiobook.parquet' --language 'ms'
-python3 speech_categories.py --file 'gemini-flash-2.0-speech.parquet' --language 'en'
-python3 speech_categories.py --file 'expresso.parquet' --language 'en'
-python3 speech_categories.py --file 'singaporean_accent_district_names_continuation.parquet' --language 'en'
-python3 speech_categories.py --file 'DisfluencySpeech.parquet' --language 'en'
-python3 speech_categories.py --file 'Latin-Audio.parquet' --language 'latin'
-python3 speech_categories.py --file 'indian_accent_english.parquet' --language 'en'
-python3 speech_categories.py --file 'multilingual-tts.parquet' --language 'multilingual'
-python3 speech_categories.py --file 'hungarian-single-speaker-tts.parquet' --language 'hungarian'
-python3 speech_categories.py --file 'OutteTTS-urdu-dataset.parquet' --language 'urdu'
-python3 speech_categories.py --file 'maya.parquet' --language 'en'
-python3 speech_categories.py --file 'AnimeVox.parquet' --language 'en'
-python3 speech_categories.py --file 'elevenlabs_ru.parquet' --language 'russian'
-python3 speech_categories.py --file 'ru_book_dataset.parquet' --language 'russian'
-python3 speech_categories.py --file 'japanese-anime-speech-v2_japanese.parquet' --language 'japanese'
-python3 speech_categories.py --file 'genshin-voice_korean.parquet' --language 'korean'
-python3 speech_categories.py --file 'genshin-voice_japanese.parquet' --language 'japanese'
-python3 speech_categories.py --file 'genshin-voice_chinese.parquet' --language 'chinese'
-python3 speech_categories.py --file 'google.parquet' --language 'multilingual'
+python3 speech_categories.py --file 'haqkiem.parquet' --language 'ms' --replication 3
+python3 speech_categories.py --file 'hindi_ai4bharat_indictts.parquet' --language 'ta' --replication 3
+python3 speech_categories.py --file 'Emilia-NV.parquet' --language 'chinese' --replication 3
+python3 speech_categories.py --file 'malay-audiobook.parquet' --language 'ms' --replication 3
+python3 speech_categories.py --file 'gemini-flash-2.0-speech.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'expresso.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'singaporean_accent_district_names_continuation.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'DisfluencySpeech.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'Latin-Audio.parquet' --language 'latin' --replication 3
+python3 speech_categories.py --file 'indian_accent_english.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'multilingual-tts.parquet' --language 'multilingual' --replication 3
+python3 speech_categories.py --file 'hungarian-single-speaker-tts.parquet' --language 'hungarian' --replication 3
+python3 speech_categories.py --file 'OutteTTS-urdu-dataset.parquet' --language 'urdu' --replication 3
+python3 speech_categories.py --file 'maya.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'AnimeVox.parquet' --language 'en' --replication 3
+python3 speech_categories.py --file 'elevenlabs_ru.parquet' --language 'russian' --replication 3
+python3 speech_categories.py --file 'ru_book_dataset.parquet' --language 'russian' --replication 3
+python3 speech_categories.py --file 'japanese-anime-speech-v2_japanese.parquet' --language 'japanese' --replication 3
+python3 speech_categories.py --file 'genshin-voice_korean.parquet' --language 'korean' --replication 3
+python3 speech_categories.py --file 'genshin-voice_japanese.parquet' --language 'japanese' --replication 3
+python3 speech_categories.py --file 'genshin-voice_chinese.parquet' --language 'chinese' --replication 3
+python3 speech_categories.py --file 'google.parquet' --language 'multilingual' --replication 3

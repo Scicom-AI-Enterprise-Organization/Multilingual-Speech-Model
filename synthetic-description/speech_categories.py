@@ -73,21 +73,24 @@ def loop(
             except:
                 pass
 
-        y, sr = librosa.load(f, sr = 16000)
-        fluency = predict_fluency(y)
-        quality = predict_quality(y)
-        accent = predict_accent(y)
-        sex_age = predict_sex_age(y)
-        gender = predict_gender(y)
-        emotion = predict_emotion(y)
-        pitch = pitch_apply(y, sr)
-        snr = snr_apply(y, sr)
-        squim = squim_apply(y, sr)
-        rate = rate_apply(t, language, snr['vad_duration'])
-        new_r = {**r, **fluency, **quality, **accent, **sex_age, **gender, **emotion, **pitch, **snr, **squim, **rate}
-        os.makedirs(os.path.split(filename)[0], exist_ok = True)
-        with open(filename, 'w') as fopen:
-            json.dump(new_r, fopen)
+        try:
+            y, sr = librosa.load(f, sr = 16000)
+            fluency = predict_fluency(y)
+            quality = predict_quality(y)
+            accent = predict_accent(y)
+            sex_age = predict_sex_age(y)
+            gender = predict_gender(y)
+            emotion = predict_emotion(y)
+            pitch = pitch_apply(y, sr)
+            snr = snr_apply(y, sr)
+            squim = squim_apply(y, sr)
+            rate = rate_apply(t, language, snr['vad_duration'])
+            new_r = {**r, **fluency, **quality, **accent, **sex_age, **gender, **emotion, **pitch, **snr, **squim, **rate}
+            os.makedirs(os.path.split(filename)[0], exist_ok = True)
+            with open(filename, 'w') as fopen:
+                json.dump(new_r, fopen)
+        except Exception as e:
+            print(e)
 
 @click.command()
 @click.option('--file')
