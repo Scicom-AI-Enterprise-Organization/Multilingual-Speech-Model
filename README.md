@@ -2,6 +2,14 @@
 
 Building actual open source including dataset multilingual TTS more than 150 languages with Voice Cloning.
 
+## Release
+
+| Model | Link | Language Support | Purpose |
+|---|---|---|---|
+| Multilingual-TTS-0.6B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-0.6B-Base) | 150+ | Base |
+| Multilingual-TTS-1.7B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) | 150+ | Base |
+| Multilingual-TTS-4B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-4B-Base) | 150+ | Base |
+
 ## Dataset 
 
 ### Source
@@ -48,24 +56,6 @@ But we not satisfied with one epoch ablation due to learning rates are not aggre
 9. Adding Muon performed better.
 
 <img src="hyperparameter-search.png" width="50%">
-
-## Continue Pretraining Base
-
-### 1.7B
-
-```bash
-bash 1.7B.sh
-```
-
-Model released at https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base
-
-### 4B
-
-```bash
-bash 4B.sh
-```
-
-Model released at https://huggingface.co/Scicom-intl/Multilingual-TTS-4B-Base
 
 ## WanDB
 

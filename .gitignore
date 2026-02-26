@@ -3,3 +3,6 @@
 *.parquet
 *_audio
 *_audio_speech_stats
+*ipynb_checkpoints
+Untitled*.ipynb
+vc-evaluation/common-voice
