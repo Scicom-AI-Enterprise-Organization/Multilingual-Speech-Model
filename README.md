@@ -31,11 +31,11 @@ All steps to reproduce in [preparation](preparation).
 
 ### Expressive TTS
 
+#### Size
+
 #### Preparation
 
 All steps to reproduce in [synthetic-description](synthetic-description).
-
-#### Source
 
 ## Ablation
 
