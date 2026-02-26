@@ -1,6 +1,6 @@
 # Multilingual-TTS
 
-Building actual open source including dataset multilingual TTS more than 150 languages with Voice Cloning.
+Building actual open source including dataset multilingual TTS more than 150 languages with Voice Cloning based on [Neucodec](https://github.com/neuphonic/neucodec) as speech tokenizer, 50 TPS.
 
 ## Release
 
@@ -12,21 +12,30 @@ Building actual open source including dataset multilingual TTS more than 150 lan
 
 ## Dataset 
 
-### Source
+### Base
+
+#### Source
 
 1. https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS
 2. https://huggingface.co/datasets/Scicom-intl/Emilia-YODAS-Voice-Conversion
 3. https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia
 
-### Size
+#### Size
 
-1. Use [neucodec](https://github.com/neuphonic/neucodec) as speech tokenizer, 50 TPS, output in 24k sample rate.
-2. Multi-speaker multilingual Voice Cloning, **up to 35.88B tokens**.
-3. Multi-speaker multilingual TTS more than 150 languages, **up to 14.64B tokens**.
+1. Multi-speaker multilingual Voice Cloning, **up to 35.88B tokens**.
+2. Multi-speaker multilingual TTS more than 150 languages, **up to 14.64B tokens**.
 
-### Preparation
+#### Preparation
 
 All steps to reproduce in [preparation](preparation).
+
+### Expressive TTS
+
+#### Preparation
+
+All steps to reproduce in [synthetic-description](synthetic-description).
+
+#### Source
 
 ## Ablation
 
