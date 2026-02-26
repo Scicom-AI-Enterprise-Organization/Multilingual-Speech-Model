@@ -4,11 +4,11 @@ Building actual open source including dataset multilingual TTS more than 150 lan
 
 ## Release
 
-| Model | Link | Language Support | Purpose |
+| Model | Link | Purpose |
 |---|---|---|---|
-| Multilingual-TTS-0.6B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-0.6B-Base) | 150+ | Base |
-| Multilingual-TTS-1.7B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) | 150+ | Base |
-| Multilingual-TTS-4B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-4B-Base) | 150+ | Base |
+| Multilingual-TTS-0.6B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-0.6B-Base) | Base |
+| Multilingual-TTS-1.7B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) | Base |
+| Multilingual-TTS-4B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-4B-Base) | Base |
 
 ## Dataset 
 
