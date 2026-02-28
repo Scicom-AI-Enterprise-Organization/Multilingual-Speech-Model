@@ -3,8 +3,8 @@ WANDB_PROJECT="Multilingual-TTS-Expressive" \
 WANDB_NAME="Qwen3-1.7B-float32-1.0" \
 TORCH_DISTRIBUTED_DEBUG="info" \
 torchrun --nproc_per_node 8 \
--m qwen3_muonadamw \
---model_name_or_path "Qwen/Qwen3-1.7B-Base" \
+-m qwen3_muonadamw_post \
+--model_name_or_path "Scicom-intl/Multilingual-TTS-1.7B-Base" \
 --per_device_train_batch_size 8 \
 --gradient_accumulation_steps 16 \
 --output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-float32-expressive \

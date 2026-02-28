@@ -9,6 +9,8 @@ Building actual open source including dataset multilingual TTS more than 150 lan
 | Multilingual-TTS-0.6B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-0.6B-Base) | Base |
 | Multilingual-TTS-1.7B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) | Base |
 | Multilingual-TTS-4B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-4B-Base) | Base |
+| Multilingual-Expressive-TTS-0.6B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-0.6B) | Post training TTS |
+| Multilingual-Expressive-TTS-1.7B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-1.7B) | Post training TTS |
 
 ## Dataset 
 
@@ -31,7 +33,13 @@ All steps to reproduce in [preparation](preparation).
 
 ### Expressive TTS
 
+#### Source
+
+1. https://huggingface.co/datasets/Scicom-intl/ExpressiveSpeech
+
 #### Size
+
+1. Multi-speaker multilingual Expressive TTS, **up to 1.15B tokens**.
 
 #### Preparation
 
@@ -66,9 +74,39 @@ But we not satisfied with one epoch ablation due to learning rates are not aggre
 
 <img src="hyperparameter-search.png" width="50%">
 
+## Training
+
+### Base
+
+#### 0.6B
+
+```bash
+bash 0.6B.sh
+```
+
+#### 1.7B
+
+```bash
+bash 1.7B.sh
+```
+
+### Expressive TTS
+
+#### 1.7B
+
+```bash
+bash 1.7B-expressive.sh
+```
+
 ## WanDB
 
+### Base
+
 All experiments at https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS
+
+### Post TTS
+
+All experiments at https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS-Expressive
 
 ## Acknowledgement
 
