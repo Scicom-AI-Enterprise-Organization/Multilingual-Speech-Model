@@ -29,16 +29,6 @@ def new_path(f):
     new_f = new_f.replace('.mp3', '.json').replace('.wav', '.json')
     return new_f
 
-def multiprocessing(strings, function, cores=6, returned=True):
-    df_split = old_chunks(strings, len(strings) // cores)
-    pool = Pool(cores)
-    pooled = pool.map(function, df_split)
-    pool.close()
-    pool.join()
-
-    if returned:
-        return list(itertools.chain(*pooled))
-
 def loop(
     indices_device_pair,
     language,
