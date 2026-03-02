@@ -3,6 +3,7 @@ import soundfile as sf
 import copy
 import itertools
 import librosa
+import re
 from functools import partial
 from multiprocess import Pool
 from datasets import load_dataset
@@ -53,9 +54,18 @@ def loop(indices_device_pair):
     rows, device = indices_device_pair
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device)
 
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    import torch
+    torch.set_float32_matmul_precision('high')
 
-    model_qwen = AutoModelForCausalLM.from_pretrained(MODEL_NAME).to('cuda')
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from neucodec import NeuCodec
+
+    codec = NeuCodec.from_pretrained("neuphonic/neucodec")
+    _ = codec.eval().to('cuda')
+
+    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME).to('cuda')
+    # model.generation_config.cache_implementation = "static"
+    # model.forward = torch.compile(model.forward, mode="reduce-overhead", fullgraph=True)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
     for r in tqdm(rows):
@@ -68,33 +78,34 @@ def loop(indices_device_pair):
         except:
             pass
 
-        os.makedirs(os.path.split(filename)[0], exist_ok = True)
+        try:
+            y, sr = librosa.load(clone_from_audio, sr = 16000)
+            with torch.no_grad():
+                codes = codec.encode_code(torch.tensor(y)[None, None])
+            tokens = ''.join([f'<|s_{i}|>' for i in codes[0, 0]])
+            prompt = f"<|im_start|>{r['source_text']}<|speech_start|>{tokens}<|im_end|><|im_start|>{r['target_text']}<|speech_start|>"
+            inputs = tokenizer(prompt,return_tensors="pt", add_special_tokens=True).to(model.device)
 
-        y, sr = librosa.load(clone_from_audio, sr = 16000)
-        with torch.no_grad():
-            codes = codec.encode_code(torch.tensor(y)[None, None])
-        tokens = ''.join([f'<|s_{i}|>' for i in codes[0, 0]])
-        prompt = f"<|im_start|>{r['source_text']}<|speech_start|>{tokens}<|im_end|><|im_start|>{r['target_text']}<|speech_start|>"
-        inputs = tokenizer(prompt,return_tensors="pt", add_special_tokens=True).to(model_qwen.device)
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=1024,
+                    do_sample=True,
+                    temperature=0.7,
+                    repetition_penalty=1.15,
+                )
+            generated_text = tokenizer.decode(outputs[0], skip_special_tokens=False)
+            audio_tokens = re.findall(r'<\|s_(\d+)\|>', generated_text.split('<|speech_start|>')[-1])
+            audio_tokens = [int(token) for token in audio_tokens]
+            audio_codes = torch.tensor(audio_tokens)[None, None]
 
-        with torch.no_grad():
-            outputs = model_qwen.generate(
-                **inputs,
-                max_new_tokens=1024,
-                do_sample=True,
-                temperature=0.8,
-                repetition_penalty=1.15,
-            )
-        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=False)
-        audio_tokens = re.findall(r'<\|s_(\d+)\|>', generated_text.split('<|speech_start|>')[-1])
-        audio_tokens = [int(token) for token in audio_tokens]
-        audio_codes = torch.tensor(audio_tokens)[None, None]
-
-        with torch.no_grad():
-            audio_waveform = codec.decode_code(audio_codes.cuda())
-        
-        os.makedirs(os.path.split(filename)[0], exist_ok = True)
-        sf.write(filename, audio_waveform[0, 0].cpu().numpy(), 24000)
+            with torch.no_grad():
+                audio_waveform = codec.decode_code(audio_codes.cuda())
+            
+            os.makedirs(os.path.split(filename)[0], exist_ok = True)
+            sf.write(filename, audio_waveform[0, 0].cpu().numpy(), 24000)
+        except Exception as e:
+            print(e)
     
 @click.command()
 @click.option('--output')

@@ -15,3 +15,11 @@ rm vc_audio.zip
 ```bash
 python3 dia_tts.py --output 'dia-tts'
 ```
+
+3. Run Scicom Multilingual TTS,
+
+```bash
+MODEL_NAME="Scicom-intl/Multilingual-TTS-0.6B-Base" python3 multilingual_tts.py --output 'multilingual-tts-0.6b'
+MODEL_NAME="Scicom-intl/Multilingual-TTS-1.7B-Base" python3 multilingual_tts.py --output 'multilingual-tts-1.7b'
+MODEL_NAME="Scicom-intl/Multilingual-TTS-4B-Base" python3 multilingual_tts.py --output 'multilingual-tts-4b'
+```
