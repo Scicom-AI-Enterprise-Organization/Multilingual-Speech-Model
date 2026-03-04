@@ -23,3 +23,9 @@ MODEL_NAME="Scicom-intl/Multilingual-TTS-0.6B-Base" python3 multilingual_tts.py 
 MODEL_NAME="Scicom-intl/Multilingual-TTS-1.7B-Base" python3 multilingual_tts.py --output 'multilingual-tts-1.7b'
 MODEL_NAME="Scicom-intl/Multilingual-TTS-4B-Base" python3 multilingual_tts.py --output 'multilingual-tts-4b'
 ```
+
+4. Run Orpheus,
+
+```bash
+python3 orpheus.py --output 'orpheus'
+```
