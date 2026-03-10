@@ -48,6 +48,7 @@ class T3(nn.Module):
         self.hp = hp
         self.cfg = LlamaConfig(**LLAMA_CONFIGS[hp.llama_config_name])
         self.tfmr = LlamaModel(self.cfg)
+        self.tfmr.set_attn_implementation("eager")
         self.dim = self.cfg.hidden_size
         self.deepspeed_patch_applied = False
 

@@ -29,6 +29,12 @@ MODEL_NAME="Scicom-intl/Multilingual-TTS-1.7B-Base" python3 multilingual_tts.py 
 python3 orpheus.py --output 'orpheus'
 ```
 
+### Chatterbox
+
+```bash
+python3 chatterbox.py --output 'chatterbox'
+```
+
 ### Fish Speech
 
 ```bash

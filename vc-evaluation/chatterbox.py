@@ -89,6 +89,13 @@ def loop(indices_device_pair):
         clone_from_audio = os.path.join("common-voice", r['language'], 'audio', r['audio_filename'])
         text_to_generate = f"[S1] {r['target_text']}"
         filename = os.path.join(r['output'], f"{r['index']}-{r['retry']}.mp3")
+        language_id = COMMON_VOICE_TO_CHATTERBOX[r['language']]
+        generate_kwargs = {
+            'exaggeration': 0.5,
+            'temperature': 0.8,
+            'cfg_weight': 0.5,
+            'audio_prompt_path': clone_from_audio,
+        }
 
         try:
             sf.read(filename)
@@ -96,6 +103,18 @@ def loop(indices_device_pair):
         except:
             pass
 
+        try:
+            wav = model.generate(
+                r['target_text'],
+                language_id=language_id,
+                **generate_kwargs
+            )
+            wav = wav.squeeze(0).numpy()
+            print(wav.shape)
+            os.makedirs(os.path.split(filename)[0], exist_ok = True)
+            sf.write(filename, wav, model.sr)
+        except Exception as e:
+            pass
         
     
 @click.command()
@@ -119,6 +138,8 @@ def main(output, replication, retry):
     rows = df.to_dict(orient='records')
     actual_rows = []
     for r in rows:
+        if r['language'] not in COMMON_VOICE_TO_CHATTERBOX:
+            continue
         for k in range(retry):
             r = copy.copy(r)
             r['retry'] = k
