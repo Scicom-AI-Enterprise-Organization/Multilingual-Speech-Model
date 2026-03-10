@@ -8,3 +8,5 @@ Untitled*.ipynb
 vc-evaluation/common-voice
 vc-evaluation/dia-tts
 vc-evaluation/multilingual-tts*
+vc-evaluation/*-similarity
+vc-evaluation/orpheus

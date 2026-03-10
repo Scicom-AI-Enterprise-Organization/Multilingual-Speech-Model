@@ -1,1 +1,2 @@
 git+https://github.com/huseinzolkepliscicom/dia-remove-compile-encoder
+git+https://github.com/fishaudio/fish-speech
