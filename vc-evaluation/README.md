@@ -406,3 +406,31 @@ Global average: 0.4002
 ```bash
 python3 calculate_similarity.py --output_folder "chatterbox" --output "chatterbox-similarity"
 ```
+
+```
+ar: 0.6326 (493 samples)
+da: 0.6584 (498 samples)
+de: 0.7088 (498 samples)
+el: 0.6365 (500 samples)
+en: 0.6579 (498 samples)
+es: 0.7312 (495 samples)
+fi: 0.6916 (500 samples)
+fr: 0.7068 (500 samples)
+he: 0.6797 (392 samples)
+hi: 0.6675 (500 samples)
+it: 0.7334 (500 samples)
+ja: 0.6203 (416 samples)
+ko: 0.7314 (458 samples)
+nl: 0.7002 (500 samples)
+nn-NO: 0.6669 (423 samples)
+pl: 0.6741 (500 samples)
+pt: 0.6048 (496 samples)
+ru: 0.6912 (498 samples)
+sv-SE: 0.6264 (500 samples)
+sw: 0.7075 (500 samples)
+tr: 0.5785 (500 samples)
+zh-CN: 0.6864 (476 samples)
+zh-TW: 0.6282 (438 samples)
+
+Global average: 0.6704
+```
