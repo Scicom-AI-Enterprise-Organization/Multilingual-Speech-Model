@@ -400,3 +400,9 @@ zh-TW: 0.3775 (438 samples)
 
 Global average: 0.4002
 ```
+
+### Chatterbox
+
+```bash
+python3 calculate_similarity.py --output_folder "chatterbox" --output "chatterbox-similarity"
+```
