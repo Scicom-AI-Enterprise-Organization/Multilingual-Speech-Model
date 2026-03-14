@@ -434,3 +434,27 @@ zh-TW: 0.6282 (438 samples)
 
 Global average: 0.6704
 ```
+
+## How to calculate CER
+
+### Dia TTS
+
+### Dia TTS
+
+```bash
+python3 calculate_cer.py --output_folder "dia-tts" --output "dia-tts-cer"
+```
+
+### Scicom Multilingual TTS
+
+#### 0.6B
+
+```bash
+python3 calculate_cer.py --output_folder "multilingual-tts-0.6b" --output "multilingual-tts-0.6b-cer"
+```
+
+#### 1.7B
+
+```bash
+python3 calculate_cer.py --output_folder "multilingual-tts-1.7b" --output "multilingual-tts-1.7b-cer"
+```

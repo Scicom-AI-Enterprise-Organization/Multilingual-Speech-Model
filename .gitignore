@@ -11,3 +11,4 @@ vc-evaluation/dia-tts
 vc-evaluation/multilingual-tts*
 vc-evaluation/*-similarity
 vc-evaluation/orpheus
+vc-evaluation/*-cer
