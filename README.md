@@ -23,7 +23,7 @@ Building actual open source including dataset multilingual TTS more than 150 lan
 
 #### Size
 
-1. Multi-speaker multilingual Voice Cloning, **up to 86.073B tokens**.
+1. Multi-speaker multilingual Voice Cloning, **up to 35.88B tokens**.
 2. Multi-speaker multilingual TTS more than 150 languages, **up to 25.35B tokens**.
 
 #### Preparation

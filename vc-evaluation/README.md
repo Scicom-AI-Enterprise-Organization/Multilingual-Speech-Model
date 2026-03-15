@@ -35,12 +35,6 @@ python3 orpheus.py --output 'orpheus'
 python3 chatterbox.py --output 'chatterbox'
 ```
 
-### Fish Speech
-
-```bash
-hf download fishaudio/openaudio-s1-mini --local-dir checkpoints/openaudio-s1-mini/
-```
-
 ## How to calculate similarity
 
 ### Dia TTS
@@ -457,4 +451,99 @@ python3 calculate_cer.py --output_folder "multilingual-tts-0.6b" --output "multi
 
 ```bash
 python3 calculate_cer.py --output_folder "multilingual-tts-1.7b" --output "multilingual-tts-1.7b-cer"
+```
+
+```
+af: 0.2057 (131 samples)
+am: 1.0000 (252 samples)
+ar: 0.2480 (493 samples)
+as: 0.9227 (379 samples)
+az: 0.1615 (95 samples)
+ba: 0.8065 (496 samples)
+be: 0.1207 (500 samples)
+bg: 0.1197 (500 samples)
+bn: 0.2563 (500 samples)
+br: 0.4922 (498 samples)
+ca: 0.1458 (500 samples)
+cs: 0.1546 (498 samples)
+cy: 0.4886 (500 samples)
+da: 0.2551 (498 samples)
+de: 0.0260 (498 samples)
+el: 0.2173 (500 samples)
+en: 0.0457 (498 samples)
+es: 0.0571 (495 samples)
+et: 0.1750 (500 samples)
+eu: 0.1325 (500 samples)
+fa: 0.2308 (500 samples)
+fi: 0.2100 (500 samples)
+fr: 0.0703 (500 samples)
+gl: 0.1304 (500 samples)
+ha: 0.2598 (500 samples)
+he: 0.3292 (392 samples)
+hi: 0.1625 (500 samples)
+ht: 0.4319 (5 samples)
+hu: 0.2238 (500 samples)
+hy-AM: 0.1221 (500 samples)
+id: 0.0501 (500 samples)
+is: 0.2425 (9 samples)
+it: 0.0704 (500 samples)
+ja: 0.2070 (416 samples)
+ka: 0.1342 (500 samples)
+kk: 0.2141 (500 samples)
+ko: 0.0828 (458 samples)
+lo: 0.9982 (26 samples)
+lt: 0.1801 (500 samples)
+lv: 0.2474 (500 samples)
+mk: 0.0872 (500 samples)
+ml: 0.9626 (490 samples)
+mn: 0.3269 (500 samples)
+mr: 0.2093 (500 samples)
+mt: 0.3445 (500 samples)
+ne-NP: 0.3208 (287 samples)
+nl: 0.0846 (500 samples)
+nn-NO: 0.2536 (423 samples)
+oc: 0.3718 (274 samples)
+pa-IN: 0.3924 (500 samples)
+pl: 0.1746 (500 samples)
+ps: 0.4081 (500 samples)
+pt: 0.2327 (496 samples)
+ro: 0.0905 (500 samples)
+ru: 0.0925 (498 samples)
+sd: 0.9383 (40 samples)
+sk: 0.3890 (490 samples)
+sl: 0.1952 (500 samples)
+sq: 0.2239 (500 samples)
+sr: 0.7674 (500 samples)
+sv-SE: 0.2310 (500 samples)
+sw: 0.1870 (500 samples)
+ta: 0.1728 (500 samples)
+te: 0.5880 (66 samples)
+tg: 0.3008 (69 samples)
+th: 0.2578 (496 samples)
+tk: 0.5732 (498 samples)
+tr: 0.2639 (500 samples)
+tt: 0.3657 (500 samples)
+uk: 0.1182 (500 samples)
+ur: 0.1211 (500 samples)
+uz: 0.3096 (500 samples)
+vi: 0.3570 (496 samples)
+yi: 0.4780 (222 samples)
+yo: 0.5375 (500 samples)
+zh-CN: 0.2165 (476 samples)
+zh-HK: 0.4680 (282 samples)
+zh-TW: 0.4133 (438 samples)
+
+Global average: 0.3007
+```
+
+### Orpheus
+
+```bash
+python3 calculate_cer.py --output_folder "orpheus" --output "orpheus-cer"
+```
+
+### Chatterbox
+
+```bash
+python3 calculate_cer.py --output_folder "chatterbox" --output "chatterbox-cer"
 ```
