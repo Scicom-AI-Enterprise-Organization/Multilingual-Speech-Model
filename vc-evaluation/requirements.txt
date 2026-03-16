@@ -1,2 +1,9 @@
 git+https://github.com/huseinzolkepliscicom/dia-remove-compile-encoder
-git+https://github.com/fishaudio/fish-speech
+librosa
+jiwer
+soundfile
+multiprocess
+datasets==4.7.0
+huggingface_hub==0.36.2
+transformers==4.57.1
+hf-transfer

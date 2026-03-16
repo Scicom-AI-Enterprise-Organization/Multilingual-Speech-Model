@@ -18,8 +18,15 @@ python3 dia_tts.py --output 'dia-tts'
 
 ### Scicom Multilingual TTS
 
+#### 0.6B
+
 ```bash
 MODEL_NAME="Scicom-intl/Multilingual-TTS-0.6B-Base" python3 multilingual_tts.py --output 'multilingual-tts-0.6b'
+```
+
+#### 1.7B
+
+```bash
 MODEL_NAME="Scicom-intl/Multilingual-TTS-1.7B-Base" python3 multilingual_tts.py --output 'multilingual-tts-1.7b'
 ```
 
@@ -33,6 +40,12 @@ python3 orpheus.py --output 'orpheus'
 
 ```bash
 python3 chatterbox.py --output 'chatterbox'
+```
+
+### FishSpeech2
+
+```bash
+python3 fishspeech2.py --output 'fishspeech2'
 ```
 
 ## How to calculate similarity
@@ -433,10 +446,91 @@ Global average: 0.6704
 
 ### Dia TTS
 
-### Dia TTS
-
 ```bash
 python3 calculate_cer.py --output_folder "dia-tts" --output "dia-tts-cer"
+```
+
+```
+af: 0.3029 (130 samples)
+am: 0.9998 (252 samples)
+ar: 0.9533 (493 samples)
+as: 0.9901 (379 samples)
+az: 0.5508 (95 samples)
+ba: 0.9895 (496 samples)
+be: 0.9419 (500 samples)
+bg: 0.9449 (500 samples)
+bn: 0.9789 (500 samples)
+br: 0.6220 (498 samples)
+ca: 0.2025 (500 samples)
+cs: 0.4114 (498 samples)
+cy: 0.4794 (500 samples)
+da: 0.4549 (498 samples)
+de: 0.2062 (498 samples)
+el: 0.9690 (498 samples)
+en: 0.1707 (495 samples)
+es: 0.1019 (495 samples)
+et: 0.3007 (497 samples)
+eu: 0.1829 (500 samples)
+fa: 0.9719 (499 samples)
+fi: 0.3899 (500 samples)
+fr: 0.2443 (500 samples)
+gl: 0.2058 (500 samples)
+ha: 0.3496 (500 samples)
+he: 0.9576 (392 samples)
+hi: 0.9757 (500 samples)
+ht: 0.5741 (5 samples)
+hu: 0.3764 (500 samples)
+hy-AM: 0.9565 (499 samples)
+id: 0.3050 (500 samples)
+is: 0.3931 (9 samples)
+it: 0.1502 (500 samples)
+ja: 0.9863 (414 samples)
+ka: 0.9712 (500 samples)
+kk: 0.9796 (500 samples)
+ko: 0.9720 (458 samples)
+lo: 0.9972 (26 samples)
+lt: 0.3816 (500 samples)
+lv: 0.5298 (500 samples)
+mk: 0.9514 (499 samples)
+ml: 0.9919 (490 samples)
+mn: 0.9845 (500 samples)
+mr: 0.9645 (500 samples)
+mt: 0.4463 (500 samples)
+ne-NP: 0.9882 (287 samples)
+nl: 0.1934 (500 samples)
+nn-NO: 0.3921 (423 samples)
+oc: 0.4540 (274 samples)
+pa-IN: 0.9960 (500 samples)
+pl: 0.5089 (500 samples)
+ps: 0.9634 (500 samples)
+pt: 0.4754 (495 samples)
+ro: 0.3127 (500 samples)
+ru: 0.9377 (496 samples)
+sd: 0.9891 (40 samples)
+sk: 0.7994 (490 samples)
+sl: 0.4282 (500 samples)
+sq: 0.4066 (500 samples)
+sr: 0.9889 (500 samples)
+sv-SE: 0.4409 (500 samples)
+sw: 0.2750 (500 samples)
+ta: 0.9731 (500 samples)
+te: 0.9972 (66 samples)
+tg: 0.9800 (69 samples)
+th: 0.9910 (496 samples)
+tk: 0.5880 (497 samples)
+tr: 0.6333 (500 samples)
+tt: 0.9784 (498 samples)
+uk: 0.9571 (496 samples)
+ur: 0.9531 (500 samples)
+uz: 0.4078 (500 samples)
+vi: 0.9794 (496 samples)
+yi: 0.9791 (222 samples)
+yo: 0.8336 (500 samples)
+zh-CN: 0.9979 (473 samples)
+zh-HK: 0.9997 (281 samples)
+zh-TW: 0.9998 (429 samples)
+
+Global average: 0.6867
 ```
 
 ### Scicom Multilingual TTS
@@ -445,6 +539,89 @@ python3 calculate_cer.py --output_folder "dia-tts" --output "dia-tts-cer"
 
 ```bash
 python3 calculate_cer.py --output_folder "multilingual-tts-0.6b" --output "multilingual-tts-0.6b-cer"
+```
+
+```
+af: 0.2587 (131 samples)
+am: 1.0000 (252 samples)
+ar: 0.2720 (493 samples)
+as: 0.9216 (379 samples)
+az: 0.2665 (95 samples)
+ba: 0.8456 (496 samples)
+be: 0.1466 (500 samples)
+bg: 0.1593 (500 samples)
+bn: 0.2635 (500 samples)
+br: 0.5497 (498 samples)
+ca: 0.1982 (500 samples)
+cs: 0.2321 (498 samples)
+cy: 0.5757 (500 samples)
+da: 0.3154 (498 samples)
+de: 0.0330 (498 samples)
+el: 0.2938 (500 samples)
+en: 0.0657 (498 samples)
+es: 0.0966 (495 samples)
+et: 0.2390 (500 samples)
+eu: 0.1573 (500 samples)
+fa: 0.3428 (500 samples)
+fi: 0.2762 (500 samples)
+fr: 0.0705 (500 samples)
+gl: 0.1743 (500 samples)
+ha: 0.3236 (500 samples)
+he: 0.3846 (392 samples)
+hi: 0.1595 (500 samples)
+ht: 0.3943 (5 samples)
+hu: 0.2915 (500 samples)
+hy-AM: 0.1321 (500 samples)
+id: 0.0632 (500 samples)
+is: 0.4129 (9 samples)
+it: 0.1390 (500 samples)
+ja: 0.2748 (416 samples)
+ka: 0.1377 (500 samples)
+kk: 0.2805 (500 samples)
+ko: 0.0816 (458 samples)
+lo: 0.9996 (26 samples)
+lt: 0.2221 (500 samples)
+lv: 0.3340 (500 samples)
+mk: 0.1070 (500 samples)
+ml: 0.9664 (490 samples)
+mn: 0.4968 (500 samples)
+mr: 0.2113 (500 samples)
+mt: 0.4565 (500 samples)
+ne-NP: 0.3428 (287 samples)
+nl: 0.1234 (500 samples)
+nn-NO: 0.3561 (423 samples)
+oc: 0.3979 (274 samples)
+pa-IN: 0.4125 (500 samples)
+pl: 0.2804 (500 samples)
+ps: 0.4784 (500 samples)
+pt: 0.3042 (496 samples)
+ro: 0.1627 (500 samples)
+ru: 0.1057 (498 samples)
+sd: 0.9646 (40 samples)
+sk: 0.4384 (490 samples)
+sl: 0.2490 (500 samples)
+sq: 0.3076 (500 samples)
+sr: 0.7663 (500 samples)
+sv-SE: 0.2865 (500 samples)
+sw: 0.2568 (500 samples)
+ta: 0.1771 (500 samples)
+te: 0.6547 (66 samples)
+tg: 0.3756 (69 samples)
+th: 0.3245 (496 samples)
+tk: 0.6428 (498 samples)
+tr: 0.2749 (500 samples)
+tt: 0.4033 (500 samples)
+uk: 0.1861 (500 samples)
+ur: 0.1311 (500 samples)
+uz: 0.3643 (500 samples)
+vi: 0.4255 (496 samples)
+yi: 0.5936 (222 samples)
+yo: 0.5849 (500 samples)
+zh-CN: 0.2480 (476 samples)
+zh-HK: 0.5884 (282 samples)
+zh-TW: 0.4835 (438 samples)
+
+Global average: 0.3502
 ```
 
 #### 1.7B
@@ -542,8 +719,119 @@ Global average: 0.3007
 python3 calculate_cer.py --output_folder "orpheus" --output "orpheus-cer"
 ```
 
+```
+af: 0.3086 (131 samples)
+am: 0.9982 (252 samples)
+ar: 0.9274 (493 samples)
+as: 0.9657 (379 samples)
+az: 0.7177 (95 samples)
+ba: 0.9655 (343 samples)
+be: 0.8430 (500 samples)
+bg: 0.7824 (500 samples)
+bn: 0.9459 (500 samples)
+br: 0.5855 (498 samples)
+ca: 0.2765 (500 samples)
+cs: 0.7404 (498 samples)
+cy: 0.6102 (500 samples)
+da: 0.4519 (498 samples)
+de: 0.1483 (498 samples)
+el: 0.9472 (500 samples)
+en: 0.1021 (498 samples)
+es: 0.1900 (495 samples)
+et: 0.3801 (500 samples)
+eu: 0.1949 (500 samples)
+fa: 0.8795 (500 samples)
+fi: 0.3708 (500 samples)
+fr: 0.3298 (500 samples)
+gl: 0.2465 (500 samples)
+ha: 0.3852 (500 samples)
+he: 0.8824 (392 samples)
+hi: 0.8939 (500 samples)
+ht: 0.4196 (5 samples)
+hu: 0.4544 (500 samples)
+hy-AM: 0.9008 (500 samples)
+id: 0.3449 (500 samples)
+is: 0.4379 (9 samples)
+it: 0.2140 (500 samples)
+ja: 0.9673 (416 samples)
+ka: 0.9234 (500 samples)
+kk: 0.8672 (500 samples)
+ko: 0.9239 (458 samples)
+lo: 0.9994 (26 samples)
+lt: 0.3732 (500 samples)
+lv: 0.4114 (500 samples)
+mk: 0.8200 (500 samples)
+ml: 0.9826 (490 samples)
+mn: 0.9270 (453 samples)
+mr: 0.9003 (464 samples)
+mt: 0.6079 (500 samples)
+ne-NP: 0.9144 (287 samples)
+nl: 0.2345 (500 samples)
+nn-NO: 0.4144 (423 samples)
+oc: 0.4571 (274 samples)
+pa-IN: 0.9653 (500 samples)
+pl: 0.6321 (500 samples)
+ps: 0.8765 (500 samples)
+pt: 0.4555 (496 samples)
+ro: 0.3581 (500 samples)
+ru: 0.8895 (498 samples)
+sd: 0.9601 (40 samples)
+sk: 0.7087 (490 samples)
+sl: 0.3687 (500 samples)
+sq: 0.5085 (500 samples)
+sr: 0.9196 (500 samples)
+sv-SE: 0.4179 (500 samples)
+sw: 0.3484 (500 samples)
+ta: 0.8962 (500 samples)
+te: 0.9858 (66 samples)
+tg: 0.8695 (69 samples)
+th: 0.9619 (496 samples)
+tk: 0.7387 (498 samples)
+tr: 0.7374 (500 samples)
+tt: 0.8962 (500 samples)
+uk: 0.9032 (500 samples)
+ur: 0.8716 (500 samples)
+uz: 0.4403 (500 samples)
+vi: 0.9291 (496 samples)
+yi: 0.8958 (222 samples)
+yo: 0.8706 (500 samples)
+zh-CN: 0.9475 (476 samples)
+zh-HK: 0.9697 (245 samples)
+zh-TW: 0.9227 (438 samples)
+
+Global average: 0.6771
+```
+
 ### Chatterbox
 
 ```bash
 python3 calculate_cer.py --output_folder "chatterbox" --output "chatterbox-cer"
+```
+
+```
+ar: 0.1577 (493 samples)
+da: 0.0956 (498 samples)
+de: 0.0434 (498 samples)
+el: 0.1077 (500 samples)
+en: 0.0554 (498 samples)
+es: 0.0318 (495 samples)
+fi: 0.0491 (500 samples)
+fr: 0.0814 (500 samples)
+he: 0.3864 (392 samples)
+hi: 0.1644 (500 samples)
+it: 0.0313 (500 samples)
+ja: 0.1669 (416 samples)
+ko: 0.0651 (458 samples)
+nl: 0.0153 (500 samples)
+nn-NO: 0.0943 (423 samples)
+pl: 0.0465 (500 samples)
+pt: 0.0933 (496 samples)
+ru: 0.0447 (498 samples)
+sv-SE: 0.0415 (500 samples)
+sw: 0.1117 (500 samples)
+tr: 0.0692 (500 samples)
+zh-CN: 0.2252 (476 samples)
+zh-TW: 0.3508 (438 samples)
+
+Global average: 0.1099
 ```
