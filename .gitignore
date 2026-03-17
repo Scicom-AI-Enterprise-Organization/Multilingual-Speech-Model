@@ -12,4 +12,6 @@ vc-evaluation/multilingual-tts*
 vc-evaluation/*-similarity
 vc-evaluation/orpheus
 vc-evaluation/*-cer
+vc-evaluation/fish-speech
+vc-evaluation/fishspeech2
 tts-evaluation/multilingual-tts*
