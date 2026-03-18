@@ -32,6 +32,10 @@ python3 orpheus.py --output 'orpheus'
 
 ### Chatterbox
 
+```bash
+python3 chatterbox.py --output 'chatterbox'
+```
+
 ### FishSpeech2
 
 ```bash

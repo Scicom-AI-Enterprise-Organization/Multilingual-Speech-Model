@@ -17,3 +17,4 @@ vc-evaluation/fishspeech2
 tts-evaluation/dia-tts
 tts-evaluation/multilingual-tts*
 tts-evaluation/orpheus
+tts-evaluation/chatterbox
