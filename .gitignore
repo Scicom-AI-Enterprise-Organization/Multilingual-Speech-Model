@@ -14,4 +14,6 @@ vc-evaluation/orpheus
 vc-evaluation/*-cer
 vc-evaluation/fish-speech
 vc-evaluation/fishspeech2
+tts-evaluation/dia-tts
 tts-evaluation/multilingual-tts*
+tts-evaluation/orpheus

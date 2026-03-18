@@ -44,6 +44,17 @@ All steps to reproduce in [preparation](preparation).
 
 All steps to reproduce in [synthetic-description](synthetic-description).
 
+### Voice Cloning
+
+#### Source
+
+1. https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia
+2. https://huggingface.co/datasets/Scicom-intl/Multilingual-TTS-Voice-Conversion
+
+#### Size
+
+1. Multi-speaker multilingual Voice Cloning, **up to 47.65B tokens**.
+
 ## Ablation
 
 ### One Epoch

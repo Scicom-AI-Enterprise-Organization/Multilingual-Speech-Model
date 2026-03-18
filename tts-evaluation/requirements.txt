@@ -14,3 +14,4 @@ einops==0.8.0
 loralib
 descript-audio-codec==1.0.0
 descript-audiotools==0.7.2
+snac==1.2.1

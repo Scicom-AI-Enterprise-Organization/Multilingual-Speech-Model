@@ -4,6 +4,10 @@
 
 ### Dia TTS
 
+```bash
+python3 dia_tts.py --output 'dia-tts'
+```
+
 ### Scicom Multilingual TTS
 
 #### 0.6B
@@ -22,9 +26,17 @@ MODEL_NAME="Scicom-intl/Multilingual-Expressive-TTS-1.7B" python3 multilingual_t
 
 ### Orpheus
 
+```bash
+python3 orpheus.py --output 'orpheus'
+```
+
 ### Chatterbox
 
 ### FishSpeech2
+
+```bash
+python3 fishspeech2.py --output 'fishspeech2'
+```
 
 ## How to calculate CER
 
