@@ -42,7 +42,19 @@ python3 chatterbox.py --output 'chatterbox'
 python3 fishspeech2.py --output 'fishspeech2'
 ```
 
+### Qwen3 TTS
+
+```bash
+python3 qwen3_tts.py --output 'qwen3_tts'
+```
+
 ## How to calculate CER
+
+### Dia TTS
+
+```bash
+python3 calculate_cer.py --output_folder "dia-tts" --output "dia-tts-cer"
+```
 
 ### Scicom Multilingual TTS
 
@@ -222,4 +234,22 @@ zh-HK: 0.6063 (371 samples)
 zh-TW: 0.3622 (466 samples)
 
 Global average: 0.2362
+```
+
+### Orpheus
+
+```bash
+python3 calculate_cer.py --output_folder "orpheus" --output "orpheus-cer"
+```
+
+### Chatterbox
+
+```bash
+python3 calculate_cer.py --output_folder "chatterbox" --output "chatterbox-cer"
+```
+
+### FishSpeech2
+
+```bash
+python3 calculate_cer.py --output_folder "fishspeech2" --output "fishspeech2-cer"
 ```

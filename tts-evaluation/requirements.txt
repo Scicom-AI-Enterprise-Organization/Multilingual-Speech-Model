@@ -15,3 +15,6 @@ loralib
 descript-audio-codec==1.0.0
 descript-audiotools==0.7.2
 snac==1.2.1
+s3tokenizer==0.3.0
+conformer==0.3.2
+diffusers==0.32.2

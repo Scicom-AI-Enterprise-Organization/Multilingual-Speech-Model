@@ -442,6 +442,95 @@ zh-TW: 0.6282 (438 samples)
 Global average: 0.6704
 ```
 
+### FishSpeech2
+
+```bash
+python3 calculate_similarity.py --output_folder "fishspeech2" --output "fishspeech2-similarity"
+```
+
+```
+af: 0.6303 (131 samples)
+am: 0.6420 (252 samples)
+ar: 0.5493 (493 samples)
+as: 0.6231 (379 samples)
+az: 0.6362 (95 samples)
+ba: 0.5654 (496 samples)
+be: 0.7089 (500 samples)
+bg: 0.6922 (500 samples)
+bn: 0.6682 (500 samples)
+br: 0.4680 (498 samples)
+ca: 0.6552 (500 samples)
+cs: 0.6141 (498 samples)
+cy: 0.5657 (500 samples)
+da: 0.5762 (498 samples)
+de: 0.6543 (498 samples)
+el: 0.5659 (500 samples)
+en: 0.6184 (498 samples)
+es: 0.6822 (495 samples)
+et: 0.7121 (500 samples)
+eu: 0.7001 (500 samples)
+fa: 0.5899 (500 samples)
+fi: 0.6106 (500 samples)
+fr: 0.6515 (500 samples)
+gl: 0.6422 (500 samples)
+ha: 0.6225 (500 samples)
+he: 0.6428 (392 samples)
+hi: 0.5928 (500 samples)
+ht: 0.5075 (5 samples)
+hu: 0.6535 (500 samples)
+hy-AM: 0.6949 (500 samples)
+id: 0.5902 (500 samples)
+is: 0.6913 (9 samples)
+it: 0.6863 (500 samples)
+ja: 0.5344 (416 samples)
+ka: 0.6940 (500 samples)
+kk: 0.6091 (500 samples)
+ko: 0.6711 (458 samples)
+lo: 0.6909 (26 samples)
+lt: 0.6793 (500 samples)
+lv: 0.5903 (500 samples)
+mk: 0.6877 (500 samples)
+ml: 0.5262 (490 samples)
+mn: 0.6382 (500 samples)
+mr: 0.6842 (500 samples)
+mt: 0.6153 (500 samples)
+ne-NP: 0.5912 (287 samples)
+nl: 0.6451 (500 samples)
+nn-NO: 0.5781 (423 samples)
+oc: 0.5797 (274 samples)
+pa-IN: 0.6085 (500 samples)
+pl: 0.6036 (500 samples)
+ps: 0.6178 (500 samples)
+pt: 0.5269 (496 samples)
+ro: 0.6521 (500 samples)
+ru: 0.6240 (498 samples)
+sd: 0.5578 (40 samples)
+sk: 0.5187 (490 samples)
+sl: 0.5573 (500 samples)
+sq: 0.5965 (500 samples)
+sr: 0.4204 (500 samples)
+sv-SE: 0.5239 (500 samples)
+sw: 0.6402 (500 samples)
+ta: 0.6561 (500 samples)
+te: 0.5545 (66 samples)
+tg: 0.6117 (69 samples)
+th: 0.5817 (496 samples)
+tk: 0.6155 (498 samples)
+tr: 0.4785 (500 samples)
+tt: 0.5614 (500 samples)
+uk: 0.5979 (500 samples)
+ur: 0.6036 (500 samples)
+uz: 0.6340 (500 samples)
+vi: 0.4726 (496 samples)
+yi: 0.5536 (222 samples)
+yo: 0.6621 (500 samples)
+zh-CN: 0.6185 (476 samples)
+zh-HK: 0.6413 (282 samples)
+zh-TW: 0.5470 (438 samples)
+
+Global average: 0.6097
+```
+
 ## How to calculate CER
 
 ### Dia TTS
@@ -834,4 +923,10 @@ zh-CN: 0.2252 (476 samples)
 zh-TW: 0.3508 (438 samples)
 
 Global average: 0.1099
+```
+
+### FishSpeech2
+
+```bash
+python3 calculate_cer.py --output_folder "fishspeech2" --output "fishspeech2-cer"
 ```

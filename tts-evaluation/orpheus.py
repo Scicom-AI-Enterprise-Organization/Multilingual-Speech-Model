@@ -150,7 +150,7 @@ def loop(indices_device_pair):
                 generated_ids = model.generate(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
-                    max_new_tokens=1200,
+                    max_new_tokens=800,
                     do_sample=True,
                     temperature=0.6,
                     top_p=0.95,
