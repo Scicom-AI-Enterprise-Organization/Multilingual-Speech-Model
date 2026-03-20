@@ -18,3 +18,4 @@ tts-evaluation/dia-tts
 tts-evaluation/multilingual-tts*
 tts-evaluation/orpheus
 tts-evaluation/chatterbox
+tts-evaluation/*-cer
