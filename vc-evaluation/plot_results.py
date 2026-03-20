@@ -545,5 +545,202 @@ def main():
     print(f'Pixels: {int(total_w*s["dpi"])} × {int(total_h*s["dpi"])}')
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  SCATTER PLOT — Score vs Parameter Size
+#  Edit MODEL_POINTS to update scores or add new models.
+#  scicom=True  → highlighted as Scicom model (teal, connected by line)
+#  langs        → number of evaluated languages (shown in annotation)
+#  note         → optional extra annotation text
+# ══════════════════════════════════════════════════════════════════════════════
+
+MODEL_POINTS = [
+    dict(label='Dia TTS',                params=1.6,  sim=0.3416, cer=0.6867, scicom=False, langs=76),
+    dict(label='Multilingual\nTTS 0.6B', params=0.6,  sim=0.4868, cer=0.3502, scicom=True,  langs=76),
+    dict(label='Multilingual\nTTS 1.7B', params=1.7,  sim=0.5036, cer=0.3007, scicom=True,  langs=76),
+    dict(label='Orpheus',                params=3.0,  sim=0.4002, cer=0.6771, scicom=False, langs=76),
+    dict(label='Chatterbox',             params=0.5,  sim=0.6704, cer=0.1099, scicom=False, langs=23,
+         note='23 langs'),
+    dict(label='FishSpeech2',            params=5.0,  sim=0.6097, cer=0.2283, scicom=False, langs=76),
+]
+
+SCATTER_STYLE = dict(
+    bg_color        = '#0f1923',
+    grid_color      = '#1a2e42',
+    scicom_color    = '#00c9a7',   # teal — Scicom models
+    scicom_edge     = '#00ffcc',
+    other_color     = '#4a7fa5',   # steel blue — other models
+    other_edge      = '#7ab8d9',
+    line_color      = '#00c9a7',   # line connecting Scicom models
+    title_color     = '#e8f4f8',
+    label_color     = '#d0e8f5',
+    tick_color      = '#8ab4cc',
+    caption_color   = '#6a9ab8',
+    anno_bg         = '#0d1e2e',
+    region_color    = '#00c9a7',   # shaded "small model" region
+    marker_size     = 220,         # scatter dot area
+    scicom_size     = 280,
+    label_fontsize  = 9.5,
+    title_fontsize  = 13,
+    axis_fontsize   = 10,
+    tick_fontsize   = 9,
+    dpi             = 150,
+    output_file     = 'scatter_results.png',
+)
+
+
+def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
+    """Draw one scatter panel (similarity or CER)."""
+
+    ax.set_facecolor(ss['bg_color'])
+    for spine in ax.spines.values():
+        spine.set_color('#1e3a52')
+
+    # shaded "small model" region (< 2B params)
+    ax.axvspan(0, 2.0, color=ss['region_color'], alpha=0.06, zorder=0)
+    ax.text(1.0, y_lim[0] + (y_lim[1] - y_lim[0]) * 0.02,
+            '< 2B region', ha='center', va='bottom',
+            fontsize=8, color=ss['region_color'], alpha=0.5, style='italic')
+
+    ax.grid(True, color=ss['grid_color'], linewidth=0.8,
+            linestyle='--', alpha=0.6, zorder=1)
+    ax.set_axisbelow(True)
+
+    # dashed line connecting Scicom models (sorted by params)
+    scicom_pts = sorted([p for p in points if p['scicom']], key=lambda p: p['params'])
+    if scicom_pts:
+        ax.plot([p['params'] for p in scicom_pts],
+                [p[y_key]   for p in scicom_pts],
+                color=ss['line_color'], linewidth=1.8,
+                linestyle='--', alpha=0.55, zorder=2)
+
+    # dots
+    for p in points:
+        x, y = p['params'], p[y_key]
+        if p['scicom']:
+            color, edge, size, lw, zo = (ss['scicom_color'], ss['scicom_edge'],
+                                         ss['scicom_size'], 2.0, 5)
+        else:
+            color, edge, size, lw, zo = (ss['other_color'], ss['other_edge'],
+                                         ss['marker_size'], 1.2, 4)
+        ax.scatter(x, y, s=size, color=color, edgecolors=edge,
+                   linewidths=lw, zorder=zo)
+
+    # label annotations — nudge positions to avoid overlap
+    label_offsets = {
+        'Dia TTS':               ( 0.12, -0.055),
+        'Multilingual\nTTS 0.6B':(-1.20,  0.018),
+        'Multilingual\nTTS 1.7B':( 0.12,  0.018),
+        'Orpheus':               ( 0.12,  0.018),
+        'Chatterbox':            ( 0.12, -0.050),
+        'FishSpeech2':           (-1.05,  0.018),
+    }
+    for p in points:
+        x, y    = p['params'], p[y_key]
+        dx, dy  = label_offsets.get(p['label'], (0.12, 0.018))
+        color   = ss['scicom_color'] if p['scicom'] else ss['label_color']
+        weight  = 'bold' if p['scicom'] else 'normal'
+        note      = f" ({p.get('note')})" if p.get('note') else ''
+        param_str = f"{p['params']}B"
+        score_txt = f"{y:.4f}  ·  {param_str}{note}"
+
+        ax.annotate(
+            f"{p['label'].replace(chr(10), ' ')}",
+            xy=(x, y), xytext=(x + dx, y + dy),
+            fontsize=ss['label_fontsize'],
+            color=color, fontweight=weight,
+            arrowprops=dict(arrowstyle='-', color=color, alpha=0.4, lw=0.8),
+            bbox=dict(boxstyle='round,pad=0.25', fc=ss['anno_bg'], ec='none', alpha=0.75),
+        )
+        ax.text(x + dx, y + dy - (y_lim[1] - y_lim[0]) * 0.058,
+                score_txt, fontsize=7.8, color=color, alpha=0.8,
+                bbox=dict(boxstyle='round,pad=0.15', fc=ss['anno_bg'], ec='none', alpha=0.6))
+
+    # arrow indicator (top-right corner)
+    arrow = '↑ higher is better' if '↑' in title else '↓ lower is better'
+    arrow_color = '#00c9a7' if '↑' in title else '#f4845f'
+    ax.text(0.98, 0.97, arrow,
+            transform=ax.transAxes, ha='right', va='top',
+            fontsize=9, color=arrow_color, fontweight='bold',
+            bbox=dict(boxstyle='round,pad=0.3', fc=ss['anno_bg'], ec=arrow_color,
+                      alpha=0.85, linewidth=1.2))
+
+    ax.set_xlim(-0.1, 5.8)
+    ax.set_ylim(*y_lim)
+
+    ax.set_xlabel('Parameter Size (B)', fontsize=ss['axis_fontsize'],
+                  color=ss['tick_color'], labelpad=6)
+    ax.set_ylabel(y_label, fontsize=ss['axis_fontsize'],
+                  color=ss['tick_color'], labelpad=6)
+    ax.tick_params(colors=ss['tick_color'], labelsize=ss['tick_fontsize'])
+    ax.set_title(title, fontsize=ss['title_fontsize'],
+                 color=ss['title_color'], fontweight='bold', pad=10)
+
+    ax.set_xticks([0, 1, 2, 3, 4, 5])
+    ax.set_xticklabels(['0B', '1B', '2B', '3B', '4B', '5B'],
+                       color=ss['tick_color'], fontsize=ss['tick_fontsize'])
+
+
+def scatter_main():
+    ss = SCATTER_STYLE
+    fig, (ax_sim, ax_cer) = plt.subplots(1, 2, figsize=(14, 6), dpi=ss['dpi'])
+    fig.patch.set_facecolor(ss['bg_color'])
+    fig.subplots_adjust(wspace=0.32, left=0.07, right=0.97,
+                        top=0.86, bottom=0.12)
+
+    draw_scatter(ax_sim, MODEL_POINTS,
+                 y_key='sim',
+                 y_label='Speaker Similarity',
+                 y_lim=(0.28, 0.82),
+                 title='Speaker Similarity ↑  vs Parameter Size',
+                 ss=ss)
+
+    draw_scatter(ax_cer, MODEL_POINTS,
+                 y_key='cer',
+                 y_label='Character Error Rate (CER)',
+                 y_lim=(-0.02, 0.82),
+                 title='CER ↓  vs Parameter Size',
+                 ss=ss)
+
+    # ── legend ────────────────────────────────────────────────────────────────
+    import matplotlib.lines as mlines
+    scicom_dot  = mlines.Line2D([], [], marker='o', linestyle='None',
+                                color=ss['scicom_color'],
+                                markeredgecolor=ss['scicom_edge'],
+                                markeredgewidth=1.5,
+                                markersize=10, label='Scicom (ours)')
+    other_dot   = mlines.Line2D([], [], marker='o', linestyle='None',
+                                color=ss['other_color'],
+                                markeredgecolor=ss['other_edge'],
+                                markeredgewidth=1.2,
+                                markersize=9,  label='Other models')
+    scicom_line = mlines.Line2D([], [], color=ss['line_color'],
+                                linewidth=1.8, linestyle='--',
+                                label='Scicom scaling curve')
+    region_patch = plt.Rectangle((0,0),1,1, fc=ss['region_color'],
+                                  alpha=0.15, label='< 2B param region')
+
+    for ax in (ax_sim, ax_cer):
+        leg = ax.legend(handles=[scicom_dot, other_dot, scicom_line, region_patch],
+                        fontsize=8, facecolor='#0d1e2e', edgecolor='#1e3a52',
+                        labelcolor=ss['label_color'],
+                        loc='upper left', framealpha=0.85)
+
+    # ── global title ──────────────────────────────────────────────────────────
+    fig.suptitle(
+        'Score vs Parameter Size  —  Scicom Models Are Competitive at Small Scale',
+        fontsize=13.5, color=ss['title_color'], fontweight='bold', y=0.97)
+    fig.text(0.5, 0.915,
+             'Scicom Multilingual TTS achieves strong performance with fewer parameters  '
+             '·  Chatterbox covers 23 languages only',
+             ha='center', fontsize=8.5,
+             color=ss['caption_color'], style='italic')
+
+    out = ss['output_file']
+    plt.savefig(out, dpi=ss['dpi'], bbox_inches='tight',
+                facecolor=fig.get_facecolor(), edgecolor='none')
+    print(f'Saved → {out}')
+
+
 if __name__ == '__main__':
     main()
+    scatter_main()

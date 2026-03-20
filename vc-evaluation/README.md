@@ -2,6 +2,8 @@
 
 Benchmarking multilingual voice cloning (VC) models across 76 languages using speaker similarity and Character Error Rate (CER).
 
+![Benchmark scatter](scatter_results.png)
+
 ## Models
 
 | Model | Description |
