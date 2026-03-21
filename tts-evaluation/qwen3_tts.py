@@ -9,31 +9,18 @@ from tqdm import tqdm
 import click
 
 COMMON_VOICE_TO_QWENTTS = {
-    "ar": "ar",      # Arabic
-    "da": "da",      # Danish
-    "de": "de",      # German
-    "el": "el",      # Greek
-    "en": "en",      # English
-    "es": "es",      # Spanish
-    "fi": "fi",      # Finnish
-    "fr": "fr",      # French
-    "he": "he",      # Hebrew
-    "hi": "hi",      # Hindi
-    "it": "it",      # Italian
-    "ja": "ja",      # Japanese
-    "ko": "ko",      # Korean
-    # "ms": None,    # Malay - NOT in Common Voice mapping
-    "nl": "nl",      # Dutch
-    "nn-NO": "no",   # Norwegian (nn-NO -> whisper "nn" -> chatterbox "no")
-    "pl": "pl",      # Polish
-    "pt": "pt",      # Portuguese
-    "ru": "ru",      # Russian
-    "sv-SE": "sv",   # Swedish
-    "sw": "sw",      # Swahili
-    "tr": "tr",      # Turkish
-    "zh-CN": "zh",   # Chinese (Simplified)
-    "zh-TW": "zh",   # Chinese (Traditional) - maps to same chatterbox "zh"
-    # "zh-HK": None, # Cantonese -> whisper "yue", not supported in chatterbox
+    # Qwen3-TTS supports only 10 languages via full English name strings
+    "de": "German",
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "it": "Italian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "zh-CN": "Chinese",  # Simplified Chinese
+    "zh-TW": "Chinese",  # Traditional Chinese - maps to same "Chinese"
 }
 
 def old_chunks(l, n):
@@ -102,13 +89,16 @@ def loop(indices_device_pair):
         try:
             wavs, sr = model.generate_custom_voice(
                 text=r['target_text'],
-                language="Chinese",
+                language=language_id,
                 speaker="Vivian",
             )
             os.makedirs(os.path.split(filename)[0], exist_ok = True)
             sf.write(filename, wavs[0], sr)
         except Exception as e:
+            print(e)
             pass
+        
+        break
         
     
 @click.command()
