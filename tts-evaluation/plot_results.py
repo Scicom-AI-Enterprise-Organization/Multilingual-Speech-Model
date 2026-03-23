@@ -212,7 +212,7 @@ STYLE = dict(
     gap_between     = 0.6,         # inches between tables
     margin_l        = 0.15,        # left margin
     margin_b        = 0.35,        # bottom margin
-    dpi             = 150,
+    dpi             = 300,
     output_file     = 'benchmark_results.png',
 )
 
@@ -351,7 +351,7 @@ def main():
     table_h = 0.5 + n_models * s['cell_h']   # 0.5 = header row
 
     total_w = table_w + s['colorbar_w'] + 0.8
-    total_h = (0.7                              # global title
+    total_h = (1.2                              # global title
                + table_h * n_metrics
                + s['gap_between'] * (n_metrics - 1)
                + 1.4)                           # bottom margin
@@ -394,13 +394,13 @@ def main():
 
     # ── global title ──────────────────────────────────────────────────────────
     top_y = s['margin_b'] + table_h * n_metrics + s['gap_between'] * (n_metrics - 1)
-    fig.text(0.5, (top_y + 0.30) / fh,
+    fig.text(0.5, (top_y + 0.80) / fh,
              'Multilingual TTS — Model Benchmark  (76 languages)',
              ha='center', va='bottom',
              fontsize=s['main_title_size'],
              color=s['title_color'], fontweight='bold')
 
-    fig.text(0.5, (top_y + 0.05) / fh,
+    fig.text(0.5, (top_y + 0.55) / fh,
              'CER: character error rate from ASR transcription  '
              '(Whisper Large V3)',
              ha='center', va='bottom',
