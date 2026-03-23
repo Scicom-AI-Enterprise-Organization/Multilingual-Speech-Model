@@ -288,8 +288,8 @@ METRICS = [
         data            = SIM_DATA,
         title           = 'Speaker Similarity',
         subtitle        = '↑  higher is better',
-        cmap_colors     = ['#0d1b2a', '#1b4f72', '#148f77',
-                           '#52be80', '#f9e79f', '#f4d03f'],
+        cmap_colors     = ['#eef4fb', '#a8cce4', '#4a9abe',
+                           '#1a7a55', '#a8d878', '#f4e840'],
         vmin            = 0.10,
         vmax            = 0.75,
         higher_is_better= True,
@@ -298,8 +298,8 @@ METRICS = [
         data            = CER_DATA,
         title           = 'Character Error Rate (CER)',
         subtitle        = '↓  lower is better',
-        cmap_colors     = ['#1a5276', '#1e8449', '#f9e79f',
-                           '#e67e22', '#922b21'],
+        cmap_colors     = ['#eef6ee', '#a8dca8', '#f0e060',
+                           '#e8883a', '#c0281a'],
         vmin            = 0.00,
         vmax            = 1.00,
         higher_is_better= False,
@@ -310,7 +310,7 @@ METRICS = [
 #  STYLE  ── tweak font sizes, cell dimensions, colors here
 # ══════════════════════════════════════════════════════════════════════════════
 STYLE = dict(
-    bg_color        = '#0f1923',   # figure / axes background
+    bg_color        = '#ffffff',   # figure / axes background
     cell_value_size = 5.2,         # font size inside each cell
     avg_value_size  = 5.8,         # font size in AVG column
     lang_label_size = 6.2,         # language code on top
@@ -318,13 +318,13 @@ STYLE = dict(
     title_size      = 13,          # per-table title
     main_title_size = 17,          # global title at the top
     caption_size    = 8.5,         # subtitle below global title
-    lang_color      = '#8ab4cc',
-    model_color     = '#d0e8f5',
-    avg_label_color = '#f0c040',
-    title_color     = '#e8f4f8',
-    caption_color   = '#6a9ab8',
-    missing_bg      = '#1c2a38',   # cell bg when data is missing
-    missing_text    = '#3a5068',   # cell text when data is missing
+    lang_color      = '#445566',
+    model_color     = '#1a1a2e',
+    avg_label_color = '#b07800',
+    title_color     = '#1a1a2e',
+    caption_color   = '#667788',
+    missing_bg      = '#e8e8ee',   # cell bg when data is missing
+    missing_text    = '#aaaacc',   # cell text when data is missing
     cell_w          = 0.55,        # inches per language column
     cell_h          = 0.55,        # inches per model row
     avg_col_w       = 0.85,        # inches for the AVG column
@@ -377,7 +377,7 @@ def draw_table(fig, ax_heat, ax_avg, ax_cb,
                 fc   = cmap(norm)
                 txt  = f'{v:.3f}'
                 lum  = 0.299*fc[0] + 0.587*fc[1] + 0.114*fc[2]
-                tc   = '#0a0f14' if lum > 0.45 else '#e8f4f8'
+                tc   = '#0a0f14' if lum > 0.45 else '#1a1a2e'
 
             ax_heat.add_patch(
                 plt.Rectangle([c, row_y], 1, 1,
@@ -458,7 +458,7 @@ def draw_table(fig, ax_heat, ax_avg, ax_cb,
     cb.ax.yaxis.set_tick_params(color=s['lang_color'],
                                 labelsize=s['lang_label_size'])
     plt.setp(cb.ax.yaxis.get_ticklabels(), color=s['lang_color'])
-    cb.outline.set_edgecolor('#1e3a52')
+    cb.outline.set_edgecolor('#cccccc')
     cb.ax.set_facecolor(s['bg_color'])
 
 
@@ -562,19 +562,19 @@ MODEL_POINTS = [
 ]
 
 SCATTER_STYLE = dict(
-    bg_color        = '#0f1923',
-    grid_color      = '#1a2e42',
-    scicom_color    = '#00c9a7',   # teal — Scicom models
-    scicom_edge     = '#00ffcc',
-    other_color     = '#4a7fa5',   # steel blue — other models
-    other_edge      = '#7ab8d9',
-    line_color      = '#00c9a7',   # line connecting Scicom models
-    title_color     = '#e8f4f8',
-    label_color     = '#d0e8f5',
-    tick_color      = '#8ab4cc',
-    caption_color   = '#6a9ab8',
-    anno_bg         = '#0d1e2e',
-    region_color    = '#00c9a7',   # shaded "small model" region
+    bg_color        = '#ffffff',
+    grid_color      = '#e0e0e0',
+    scicom_color    = '#203882',   # rgb(32,56,130) — Scicom models
+    scicom_edge     = '#101d55',
+    other_color     = '#2e9e4f',   # green — other models
+    other_edge      = '#1d7a3a',
+    line_color      = '#203882',   # line connecting Scicom models
+    title_color     = '#1a1a2e',
+    label_color     = '#2c2c3e',
+    tick_color      = '#555577',
+    caption_color   = '#777799',
+    anno_bg         = '#f5f5f5',
+    region_color    = '#00a885',   # shaded "small model" region
     marker_size     = 220,         # scatter dot area
     scicom_size     = 280,
     label_fontsize  = 9.5,
@@ -586,12 +586,12 @@ SCATTER_STYLE = dict(
 )
 
 
-def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
+def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss, label_offsets=None):
     """Draw one scatter panel (similarity or CER)."""
 
     ax.set_facecolor(ss['bg_color'])
     for spine in ax.spines.values():
-        spine.set_color('#1e3a52')
+        spine.set_color('#cccccc')
 
     # shaded "small model" region (< 2B params)
     ax.axvspan(0, 2.0, color=ss['region_color'], alpha=0.06, zorder=0)
@@ -624,13 +624,16 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
                    linewidths=lw, zorder=zo)
 
     # label annotations — nudge positions to avoid overlap
-    label_offsets = {
-        'Dia TTS':               ( 0.12, -0.055),
-        'Multilingual\nTTS 0.6B':(-1.20,  0.018),
-        'Multilingual\nTTS 1.7B':( 0.12,  0.018),
+    default_offsets = {
+        'Dia TTS':               ( 0.12,  0.035),
+        'Multilingual\nTTS 0.6B':( 0.12,  0.055),
+        'Multilingual\nTTS 1.7B':( 0.12, -0.050),
         'Orpheus':               ( 0.12,  0.018),
         'FishSpeech2':           (-1.05,  0.018),
     }
+    if label_offsets:
+        default_offsets.update(label_offsets)
+    label_offsets = default_offsets
     for p in points:
         x, y    = p['params'], p[y_key]
         dx, dy  = label_offsets.get(p['label'], (0.12, 0.018))
@@ -645,7 +648,6 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
             xy=(x, y), xytext=(x + dx, y + dy),
             fontsize=ss['label_fontsize'],
             color=color, fontweight=weight,
-            arrowprops=dict(arrowstyle='-', color=color, alpha=0.4, lw=0.8),
             bbox=dict(boxstyle='round,pad=0.25', fc=ss['anno_bg'], ec='none', alpha=0.75),
         )
         ax.text(x + dx, y + dy - (y_lim[1] - y_lim[0]) * 0.058,
@@ -654,12 +656,12 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
 
     # arrow indicator (top-right corner)
     arrow = '↑ higher is better' if '↑' in title else '↓ lower is better'
-    arrow_color = '#00c9a7' if '↑' in title else '#f4845f'
+    arrow_color = '#203882' if '↑' in title else '#e05c3a'
     ax.text(0.98, 0.97, arrow,
             transform=ax.transAxes, ha='right', va='top',
             fontsize=9, color=arrow_color, fontweight='bold',
             bbox=dict(boxstyle='round,pad=0.3', fc=ss['anno_bg'], ec=arrow_color,
-                      alpha=0.85, linewidth=1.2))
+                      alpha=0.9, linewidth=1.2))
 
     ax.set_xlim(-0.1, 5.8)
     ax.set_ylim(*y_lim)
@@ -689,7 +691,11 @@ def scatter_main():
                  y_label='Speaker Similarity',
                  y_lim=(0.28, 0.82),
                  title='Speaker Similarity ↑  vs Parameter Size',
-                 ss=ss)
+                 ss=ss,
+                 label_offsets={
+                     'Multilingual\nTTS 0.6B': (-0.45,  0.055),
+                     'Multilingual\nTTS 1.7B': ( 0.08, -0.030),
+                 })
 
     draw_scatter(ax_cer, MODEL_POINTS,
                  y_key='cer',
@@ -718,9 +724,9 @@ def scatter_main():
 
     for ax in (ax_sim, ax_cer):
         leg = ax.legend(handles=[scicom_dot, other_dot, scicom_line, region_patch],
-                        fontsize=8, facecolor='#0d1e2e', edgecolor='#1e3a52',
+                        fontsize=8, facecolor='#ffffff', edgecolor='#cccccc',
                         labelcolor=ss['label_color'],
-                        loc='upper left', framealpha=0.85)
+                        loc='upper left', framealpha=0.9)
 
     # ── global title ──────────────────────────────────────────────────────────
     fig.suptitle(

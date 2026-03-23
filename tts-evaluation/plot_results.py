@@ -189,7 +189,7 @@ METRICS = [
 #  STYLE  ── tweak font sizes, cell dimensions, colors here
 # ══════════════════════════════════════════════════════════════════════════════
 STYLE = dict(
-    bg_color        = '#0f1923',   # figure / axes background
+    bg_color        = '#ffffff',   # figure / axes background
     cell_value_size = 5.2,         # font size inside each cell
     avg_value_size  = 5.8,         # font size in AVG column
     lang_label_size = 6.2,         # language code on top
@@ -197,13 +197,13 @@ STYLE = dict(
     title_size      = 13,          # per-table title
     main_title_size = 17,          # global title at the top
     caption_size    = 8.5,         # subtitle below global title
-    lang_color      = '#8ab4cc',
-    model_color     = '#d0e8f5',
-    avg_label_color = '#f0c040',
-    title_color     = '#e8f4f8',
-    caption_color   = '#6a9ab8',
-    missing_bg      = '#1c2a38',   # cell bg when data is missing
-    missing_text    = '#3a5068',   # cell text when data is missing
+    lang_color      = '#444444',
+    model_color     = '#222222',
+    avg_label_color = '#203882',
+    title_color     = '#1a1a2e',
+    caption_color   = '#666666',
+    missing_bg      = '#eeeeee',   # cell bg when data is missing
+    missing_text    = '#aaaaaa',   # cell text when data is missing
     cell_w          = 0.55,        # inches per language column
     cell_h          = 0.55,        # inches per model row
     avg_col_w       = 0.85,        # inches for the AVG column
@@ -337,7 +337,7 @@ def draw_table(fig, ax_heat, ax_avg, ax_cb,
     cb.ax.yaxis.set_tick_params(color=s['lang_color'],
                                 labelsize=s['lang_label_size'])
     plt.setp(cb.ax.yaxis.get_ticklabels(), color=s['lang_color'])
-    cb.outline.set_edgecolor('#1e3a52')
+    cb.outline.set_edgecolor('#cccccc')
     cb.ax.set_facecolor(s['bg_color'])
 
 
@@ -433,19 +433,19 @@ MODEL_POINTS = [
 ]
 
 SCATTER_STYLE = dict(
-    bg_color        = '#0f1923',
-    grid_color      = '#1a2e42',
-    scicom_color    = '#00c9a7',   # teal — Scicom models
-    scicom_edge     = '#00ffcc',
-    other_color     = '#4a7fa5',   # steel blue — other models
-    other_edge      = '#7ab8d9',
-    line_color      = '#00c9a7',   # line connecting Scicom models
-    title_color     = '#e8f4f8',
-    label_color     = '#d0e8f5',
-    tick_color      = '#8ab4cc',
-    caption_color   = '#6a9ab8',
-    anno_bg         = '#0d1e2e',
-    region_color    = '#00c9a7',   # shaded "small model" region
+    bg_color        = '#ffffff',
+    grid_color      = '#e0e0e0',
+    scicom_color    = '#203882',   # Scicom models
+    scicom_edge     = '#0f1f5c',
+    other_color     = '#27ae60',   # green — other models
+    other_edge      = '#1a8a48',
+    line_color      = '#203882',   # line connecting Scicom models
+    title_color     = '#1a1a2e',
+    label_color     = '#333333',
+    tick_color      = '#444444',
+    caption_color   = '#666666',
+    anno_bg         = '#f5f5f5',
+    region_color    = '#203882',   # shaded "small model" region
     marker_size     = 220,         # scatter dot area
     scicom_size     = 280,
     label_fontsize  = 9.5,
@@ -462,7 +462,7 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
 
     ax.set_facecolor(ss['bg_color'])
     for spine in ax.spines.values():
-        spine.set_color('#1e3a52')
+        spine.set_color('#cccccc')
 
     # shaded "small model" region (< 2B params)
     ax.axvspan(0, 2.0, color=ss['region_color'], alpha=0.06, zorder=0)
@@ -497,10 +497,10 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
     # label annotations — nudge positions to avoid overlap
     label_offsets = {
         'Dia TTS':               ( 0.12, -0.070),
-        'Multilingual\nTTS 0.6B':(-1.20,  0.020),
+        'Multilingual\nTTS 0.6B':( 0.12,  0.060),
         'Multilingual\nTTS 1.7B':( 0.15,  0.020),
         'Orpheus':               ( 0.12,  0.020),
-        'FishSpeech2':           (-1.05,  0.020),
+        'FishSpeech2':           (-0.45,  0.060),
         'Qwen3 TTS':             (-1.20, -0.070),
     }
     for p in points:
@@ -517,7 +517,7 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
             xy=(x, y), xytext=(x + dx, y + dy),
             fontsize=ss['label_fontsize'],
             color=color, fontweight=weight,
-            arrowprops=dict(arrowstyle='-', color=color, alpha=0.4, lw=0.8),
+            arrowprops=None,
             bbox=dict(boxstyle='round,pad=0.25', fc=ss['anno_bg'], ec='none', alpha=0.75),
         )
         ax.text(x + dx, y + dy - (y_lim[1] - y_lim[0]) * 0.058,
@@ -581,9 +581,9 @@ def scatter_main():
                                   alpha=0.15, label='< 2B param region')
 
     ax_cer.legend(handles=[scicom_dot, other_dot, scicom_line, region_patch],
-                  fontsize=8, facecolor='#0d1e2e', edgecolor='#1e3a52',
+                  fontsize=8, facecolor='#f5f5f5', edgecolor='#cccccc',
                   labelcolor=ss['label_color'],
-                  loc='upper right', framealpha=0.85)
+                  loc='upper right', framealpha=0.95)
 
     # ── global title ──────────────────────────────────────────────────────────
     fig.suptitle(
