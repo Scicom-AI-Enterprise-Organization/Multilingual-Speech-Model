@@ -66,8 +66,10 @@ def loop(indices_device_pair):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(device)
 
     import torch
-
     torch.set_grad_enabled(False)
+
+    from qwen_tts import Qwen3TTSModel
+
     model = Qwen3TTSModel.from_pretrained(
         "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
         device_map="cuda:0",
@@ -97,8 +99,6 @@ def loop(indices_device_pair):
         except Exception as e:
             print(e)
             pass
-        
-        break
         
     
 @click.command()
