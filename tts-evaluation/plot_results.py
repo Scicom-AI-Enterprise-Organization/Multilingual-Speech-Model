@@ -254,7 +254,7 @@ def draw_table(fig, ax_heat, ax_avg, ax_cb,
             else:
                 norm = np.clip((v - vmin) / (vmax - vmin), 0, 1)
                 fc   = cmap(norm)
-                txt  = f'{v:.2f}'
+                txt  = f'{v:.3f}'
                 lum  = 0.299*fc[0] + 0.587*fc[1] + 0.114*fc[2]
                 tc   = '#0a0f14' if lum > 0.45 else '#e8f4f8'
 
