@@ -27,6 +27,8 @@ rm vc_audio.zip
 
 ## Run Generations
 
+Each prompt is generated **twice** and the scores are averaged to reduce variance. We also upload all the generations done by us at [Scicom-intl/Evaluation-Multilingual-VC](https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC)
+
 ### Dia TTS
 
 ```bash

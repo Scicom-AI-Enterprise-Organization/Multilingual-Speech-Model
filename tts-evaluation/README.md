@@ -1,6 +1,6 @@
 # TTS Evaluation
 
-Benchmarking multilingual TTS models across 76 languages using Character Error Rate (CER).
+Benchmarking multilingual TTS models across 76 languages using Character Error Rate (CER) and MOS based on UTMOSv2.
 
 ![Benchmark scatter](scatter_results.png)
 
@@ -23,6 +23,8 @@ pip install -r requirements.txt
 ```
 
 ## Run Generations
+
+Each prompt is generated **twice** and the scores are averaged to reduce variance. We also upload all the generations done by us at [Scicom-intl/Evaluation-Multilingual-VC](https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC)
 
 ### Dia TTS
 
