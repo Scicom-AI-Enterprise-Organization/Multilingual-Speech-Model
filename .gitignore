@@ -20,3 +20,4 @@ tts-evaluation/orpheus
 tts-evaluation/chatterbox
 tts-evaluation/qwen3_tts
 tts-evaluation/*-cer
+*.zip
