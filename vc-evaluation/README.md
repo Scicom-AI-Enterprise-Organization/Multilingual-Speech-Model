@@ -13,7 +13,7 @@ Benchmarking multilingual voice cloning (VC) models across 76 languages using sp
 | **Multilingual TTS 1.7B** | [Scicom-intl/Multilingual-TTS-1.7B-Base](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) |
 | **Orpheus** | [Orpheus TTS](https://github.com/canopyai/Orpheus-TTS) |
 | **Chatterbox** | [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) — 23 languages only |
-| **FishSpeech2** | [FishSpeech 2](https://github.com/fishaudio/fish-speech) |
+| **Fish Audio S2 Pro** | [Fish Audio S2 Pro](https://github.com/fishaudio/fish-speech) |
 
 ## Setup
 
@@ -57,7 +57,7 @@ python3 orpheus.py --output 'orpheus'
 python3 chatterbox.py --output 'chatterbox'
 ```
 
-### FishSpeech2
+### Fish Audio S2 Pro
 
 ```bash
 python3 fishspeech2.py --output 'fishspeech2'
@@ -98,7 +98,7 @@ Summary across all evaluated languages. Full per-language heatmap below.
 | Multilingual TTS 1.7B | 76 | **0.5036** | 0.3007 |
 | Orpheus | 76 | 0.4002 | 0.6771 |
 | Chatterbox | 23 | **0.6704** | **0.1099** |
-| FishSpeech2 | 76 | 0.6097 | **0.2283** |
+| Fish Audio S2 Pro | 76 | 0.6097 | **0.2283** |
 
 > Chatterbox covers 23 languages only; its averages are not directly comparable to 76-language models.
 

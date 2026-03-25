@@ -13,7 +13,7 @@ Benchmarking multilingual TTS models across 76 languages using Character Error R
 | **Multilingual TTS 1.7B** | [Scicom-intl/Multilingual-Expressive-TTS-1.7B](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-1.7B) |
 | **Orpheus** | [Orpheus TTS](https://github.com/canopyai/Orpheus-TTS) |
 | **Chatterbox** | [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) — 23 languages only |
-| **FishSpeech2** | [FishSpeech 2](https://github.com/fishaudio/fish-speech) |
+| **Fish Audio S2 Pro** | [Fish Audio S2 Pro](https://github.com/fishaudio/fish-speech) |
 | **Qwen3 TTS** | [Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice) — 11 languages only |
 
 ## Setup
@@ -56,7 +56,7 @@ python3 orpheus.py --output 'orpheus'
 python3 chatterbox.py --output 'chatterbox'
 ```
 
-### FishSpeech2
+### Fish Audio S2 Pro
 
 ```bash
 python3 fishspeech2.py --output 'fishspeech2'
@@ -93,7 +93,7 @@ Summary across all evaluated languages. Full per-language heatmap below.
 | Multilingual TTS 1.7B | 76 | **0.2362** |
 | Orpheus | 76 | 0.6075 |
 | Chatterbox | 23 | 0.1698 |
-| FishSpeech2 | 76 | 0.2370 |
+| Fish Audio S2 Pro | 76 | 0.2370 |
 | Qwen3 TTS | 11 | **0.1064** |
 
 > Chatterbox covers 23 languages only; Qwen3 TTS covers 11 languages only. Their averages are not directly comparable to 76-language models.

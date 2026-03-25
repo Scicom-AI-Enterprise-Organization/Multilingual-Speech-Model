@@ -40,7 +40,7 @@ MODELS = [
     'Multilingual TTS 1.7B',
     'Orpheus',
     'Chatterbox',
-    'FishSpeech2',
+    'Fish Audio S2 Pro',
     'Qwen3 TTS',
 ]
 
@@ -140,7 +140,7 @@ CER_DATA = [
         'tr':0.1195,'zh-CN':0.2912,'zh-TW':0.3377,
         '__avg__': 0.1698,
     },
-    # ── FishSpeech2 ──────────────────────────────────────────────────────────
+    # ── Fish Audio S2 Pro ──────────────────────────────────────────────────────────
     {
         'af':0.1038,'am':1.0000,'ar':0.1338,'as':0.9265,'az':0.1028,
         'ba':0.5808,'be':0.0997,'bg':0.0926,'bn':0.2325,'br':0.3175,
@@ -429,7 +429,7 @@ MODEL_POINTS = [
     dict(label='Multilingual\nTTS 0.6B', params=0.6,  cer=0.2384, scicom=True,  langs=76),
     dict(label='Multilingual\nTTS 1.7B', params=1.7,  cer=0.2362, scicom=True,  langs=76),
     dict(label='Orpheus',                params=3.0,  cer=0.6075, scicom=False, langs=76),
-    dict(label='FishSpeech2',            params=5.0,  cer=0.2370, scicom=False, langs=76),
+    dict(label='Fish Audio S2 Pro',            params=5.0,  cer=0.2370, scicom=False, langs=76),
 ]
 
 SCATTER_STYLE = dict(
@@ -500,7 +500,7 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
         'Multilingual\nTTS 0.6B':( 0.12,  0.060),
         'Multilingual\nTTS 1.7B':( 0.15,  0.020),
         'Orpheus':               ( 0.12,  0.020),
-        'FishSpeech2':           (-0.45,  0.060),
+        'Fish Audio S2 Pro':           (-0.45,  0.060),
         'Qwen3 TTS':             (-1.20, -0.070),
     }
     for p in points:

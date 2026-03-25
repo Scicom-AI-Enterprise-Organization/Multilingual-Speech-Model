@@ -40,7 +40,7 @@ MODELS = [
     'Multilingual TTS 1.7B',
     'Orpheus',
     'Chatterbox',
-    'FishSpeech2',
+    'Fish Audio S2 Pro',
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -139,7 +139,7 @@ SIM_DATA = [
         'tr':0.5785,'zh-CN':0.6864,'zh-TW':0.6282,
         '__avg__': 0.6704,
     },
-    # ── FishSpeech2 ──────────────────────────────────────────────────────────
+    # ── Fish Audio S2 Pro ──────────────────────────────────────────────────────────
     {
         'af':0.6303,'am':0.6420,'ar':0.5493,'as':0.6231,'az':0.6362,
         'ba':0.5654,'be':0.7089,'bg':0.6922,'bn':0.6682,'br':0.4680,
@@ -251,7 +251,7 @@ CER_DATA = [
         'tr':0.0692,'zh-CN':0.2252,'zh-TW':0.3508,
         '__avg__': 0.1099,
     },
-    # ── FishSpeech2 ──────────────────────────────────────────────────────────
+    # ── Fish Audio S2 Pro ──────────────────────────────────────────────────────────
     {
         'af':0.0937,'am':1.0000,'ar':0.1265,'as':0.9173,'az':0.0665,
         'ba':0.7211,'be':0.1029,'bg':0.0789,'bn':0.2223,'br':0.3083,
@@ -558,7 +558,7 @@ MODEL_POINTS = [
     dict(label='Multilingual\nTTS 0.6B', params=0.6,  sim=0.4868, cer=0.3502, scicom=True,  langs=76),
     dict(label='Multilingual\nTTS 1.7B', params=1.7,  sim=0.5036, cer=0.2656, scicom=True,  langs=76),
     dict(label='Orpheus',                params=3.0,  sim=0.4002, cer=0.6771, scicom=False, langs=76),
-    dict(label='FishSpeech2',            params=5.0,  sim=0.6097, cer=0.2283, scicom=False, langs=76),
+    dict(label='Fish Audio S2 Pro',            params=5.0,  sim=0.6097, cer=0.2283, scicom=False, langs=76),
 ]
 
 SCATTER_STYLE = dict(
@@ -629,7 +629,7 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss, label_offsets=Non
         'Multilingual\nTTS 0.6B':( 0.12,  0.055),
         'Multilingual\nTTS 1.7B':( 0.12, -0.050),
         'Orpheus':               ( 0.12,  0.018),
-        'FishSpeech2':           (-1.05,  0.018),
+        'Fish Audio S2 Pro':           (-1.05,  0.018),
     }
     if label_offsets:
         default_offsets.update(label_offsets)
