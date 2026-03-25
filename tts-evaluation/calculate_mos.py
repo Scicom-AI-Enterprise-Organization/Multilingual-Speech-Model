@@ -68,7 +68,7 @@ def loop(indices_device_pair):
         filename = os.path.join(r['output'], f"{r['index']}-{r['retry']}.json")
 
         try:
-            mos = model.predict(input_path=to_audio, num_repetitions=2)
+            mos = model.predict(input_path=to_audio, num_repetitions=3)
             os.makedirs(os.path.split(filename)[0], exist_ok = True)
             with open(filename, 'w') as fopen:
                 json.dump(mos, fopen)

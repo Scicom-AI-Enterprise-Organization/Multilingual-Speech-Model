@@ -85,13 +85,13 @@ python3 calculate_cer.py --output_folder "qwen3_tts"             --output "qwen3
 ### MOS
 
 ```bash
-python3 calculate_cer.py --output_folder "dia-tts"               --output "dia-tts-mos"
-python3 calculate_mos.py --output_folder "multilingual-tts-0.6b" --output "multilingual-tts-0.6b-mos"
-python3 calculate_mos.py --output_folder "multilingual-tts-1.7b" --output "multilingual-tts-1.7b-mos"
-python3 calculate_mos.py --output_folder "orpheus"               --output "orpheus-mos"
-python3 calculate_mos.py --output_folder "chatterbox"            --output "chatterbox-mos"
-python3 calculate_mos.py --output_folder "fishspeech2"           --output "fishspeech2-mos"
-python3 calculate_mos.py --output_folder "qwen3_tts"             --output "qwen3_tts-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "dia-tts"  --output "dia-tts-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "multilingual-tts-0.6b" --output "multilingual-tts-0.6b-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "multilingual-tts-1.7b" --output "multilingual-tts-1.7b-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "orpheus" --output "orpheus-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "chatterbox" --output "chatterbox-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "fishspeech2" --output "fishspeech2-mos"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 calculate_mos.py --output_folder "qwen3_tts" --output "qwen3_tts-mos"
 ```
 
 ## Results
