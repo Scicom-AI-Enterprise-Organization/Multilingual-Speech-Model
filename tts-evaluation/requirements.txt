@@ -1,4 +1,5 @@
 git+https://github.com/huseinzolkepliscicom/dia-remove-compile-encoder
+git+https://github.com/Scicom-AI-Enterprise-Organization/faster-UTMOSv2
 librosa
 jiwer
 soundfile
@@ -18,3 +19,4 @@ snac==1.2.1
 s3tokenizer==0.3.0
 conformer==0.3.2
 diffusers==0.32.2
+timm

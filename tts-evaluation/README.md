@@ -82,6 +82,18 @@ python3 calculate_cer.py --output_folder "fishspeech2"           --output "fishs
 python3 calculate_cer.py --output_folder "qwen3_tts"             --output "qwen3_tts-cer"
 ```
 
+### MOS
+
+```bash
+python3 calculate_cer.py --output_folder "dia-tts"               --output "dia-tts-mos"
+python3 calculate_mos.py --output_folder "multilingual-tts-0.6b" --output "multilingual-tts-0.6b-mos"
+python3 calculate_mos.py --output_folder "multilingual-tts-1.7b" --output "multilingual-tts-1.7b-mos"
+python3 calculate_mos.py --output_folder "orpheus"               --output "orpheus-mos"
+python3 calculate_mos.py --output_folder "chatterbox"            --output "chatterbox-mos"
+python3 calculate_mos.py --output_folder "fishspeech2"           --output "fishspeech2-mos"
+python3 calculate_mos.py --output_folder "qwen3_tts"             --output "qwen3_tts-mos"
+```
+
 ## Results
 
 Summary across all evaluated languages. Full per-language heatmap below.
