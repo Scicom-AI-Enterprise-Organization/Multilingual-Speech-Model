@@ -36,8 +36,8 @@ LANGS = [
 # ══════════════════════════════════════════════════════════════════════════════
 MODELS = [
     'Dia TTS',
-    'Multilingual TTS 0.6B',
-    'Multilingual TTS 1.7B',
+    'Multilingual-Expressive-TTS-0.6B',
+    'Multilingual-Expressive-TTS-1.7B',
     'Orpheus',
     'Chatterbox',
     'Fish Audio S2 Pro',
@@ -71,7 +71,7 @@ CER_DATA = [
         'zh-CN':0.9994,'zh-HK':0.9997,'zh-TW':0.9995,
         '__avg__': 0.8131,
     },
-    # ── Multilingual TTS 0.6B ────────────────────────────────────────────────
+    # ── Multilingual-Expressive-TTS-0.6B ────────────────────────────────────────────────
     {
         'af':0.1346,'am':1.0000,'ar':0.1417,'as':0.9192,'az':0.0416,
         'ba':0.6995,'be':0.0831,'bg':0.1094,'bn':0.3311,'br':0.3311,
@@ -91,7 +91,7 @@ CER_DATA = [
         'zh-CN':0.2820,'zh-HK':0.6496,'zh-TW':0.4257,
         '__avg__': 0.2384,
     },
-    # ── Multilingual TTS 1.7B ────────────────────────────────────────────────
+    # ── Multilingual-Expressive-TTS-1.7B ────────────────────────────────────────────────
     {
         'af':0.1158,'am':1.0000,'ar':0.1384,'as':0.9360,'az':0.0342,
         'ba':0.6757,'be':0.0812,'bg':0.1035,'bn':0.3762,'br':0.3344,
@@ -426,8 +426,8 @@ def main():
 
 MODEL_POINTS = [
     dict(label='Dia TTS',                params=1.6,  cer=0.8131, scicom=False, langs=76),
-    dict(label='Multilingual\nTTS 0.6B', params=0.6,  cer=0.2384, scicom=True,  langs=76),
-    dict(label='Multilingual\nTTS 1.7B', params=1.7,  cer=0.2362, scicom=True,  langs=76),
+    dict(label='Multilingual-Expressive-TTS-0.6B', params=0.6,  cer=0.2384, scicom=True,  langs=76),
+    dict(label='Multilingual-Expressive-TTS-1.7B', params=1.7,  cer=0.2362, scicom=True,  langs=76),
     dict(label='Orpheus',                params=3.0,  cer=0.6075, scicom=False, langs=76),
     dict(label='Fish Audio S2 Pro',            params=5.0,  cer=0.2370, scicom=False, langs=76),
 ]
@@ -497,8 +497,8 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss):
     # label annotations — nudge positions to avoid overlap
     label_offsets = {
         'Dia TTS':               ( 0.12, -0.070),
-        'Multilingual\nTTS 0.6B':( 0.12,  0.060),
-        'Multilingual\nTTS 1.7B':( 0.15,  0.020),
+        'Multilingual-Expressive-TTS-0.6B':( 0.12,  0.060),
+        'Multilingual-Expressive-TTS-1.7B':( 0.15,  0.020),
         'Orpheus':               ( 0.12,  0.020),
         'Fish Audio S2 Pro':           (-0.45,  0.060),
         'Qwen3 TTS':             (-1.20, -0.070),

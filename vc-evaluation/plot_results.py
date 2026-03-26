@@ -36,8 +36,8 @@ LANGS = [
 # ══════════════════════════════════════════════════════════════════════════════
 MODELS = [
     'Dia TTS',
-    'Multilingual TTS 0.6B',
-    'Multilingual TTS 1.7B',
+    'Multilingual-TTS-0.6B-Base',
+    'Multilingual-TTS-1.7B-Base',
     'Orpheus',
     'Chatterbox',
     'Fish Audio S2 Pro',
@@ -70,7 +70,7 @@ SIM_DATA = [
         'zh-CN':0.2815,'zh-HK':0.2585,'zh-TW':0.1461,
         '__avg__': 0.3416,
     },
-    # ── Multilingual TTS 0.6B ────────────────────────────────────────────────
+    # ── Multilingual-TTS-0.6B-Base ────────────────────────────────────────────────
     {
         'af':0.5121,'am':0.5132,'ar':0.4300,'as':0.5331,'az':0.5316,
         'ba':0.4551,'be':0.5979,'bg':0.6095,'bn':0.5832,'br':0.3314,
@@ -90,7 +90,7 @@ SIM_DATA = [
         'zh-CN':0.5086,'zh-HK':0.5203,'zh-TW':0.4256,
         '__avg__': 0.4868,
     },
-    # ── Multilingual TTS 1.7B ────────────────────────────────────────────────
+    # ── Multilingual-TTS-1.7B-Base ────────────────────────────────────────────────
     {
         'af':0.5300,'am':0.5480,'ar':0.4484,'as':0.5358,'az':0.5675,
         'ba':0.4666,'be':0.6024,'bg':0.6113,'bn':0.5791,'br':0.3648,
@@ -182,7 +182,7 @@ CER_DATA = [
         'zh-CN':0.9979,'zh-HK':0.9997,'zh-TW':0.9998,
         '__avg__': 0.6867,
     },
-    # ── Multilingual TTS 0.6B ────────────────────────────────────────────────
+    # ── Multilingual-TTS-0.6B-Base ────────────────────────────────────────────────
     {
         'af':0.2587,'am':1.0000,'ar':0.2720,'as':0.9216,'az':0.2665,
         'ba':0.8456,'be':0.1466,'bg':0.1593,'bn':0.2635,'br':0.5497,
@@ -202,7 +202,7 @@ CER_DATA = [
         'zh-CN':0.2480,'zh-HK':0.5884,'zh-TW':0.4835,
         '__avg__': 0.3502,
     },
-    # ── Multilingual TTS 1.7B ────────────────────────────────────────────────
+    # ── Multilingual-TTS-1.7B-Base ────────────────────────────────────────────────
     {
         'af':0.1814,'am':1.0000,'ar':0.2174,'as':0.9171,'az':0.0687,
         'ba':0.7372,'be':0.1025,'bg':0.1011,'bn':0.2459,'br':0.4494,
@@ -555,8 +555,8 @@ def main():
 
 MODEL_POINTS = [
     dict(label='Dia TTS',                params=1.6,  sim=0.3416, cer=0.6867, scicom=False, langs=76),
-    dict(label='Multilingual\nTTS 0.6B', params=0.6,  sim=0.4868, cer=0.3502, scicom=True,  langs=76),
-    dict(label='Multilingual\nTTS 1.7B', params=1.7,  sim=0.5036, cer=0.2656, scicom=True,  langs=76),
+    dict(label='Multilingual-TTS-0.6B-Base', params=0.6,  sim=0.4868, cer=0.3502, scicom=True,  langs=76),
+    dict(label='Multilingual-TTS-1.7B-Base', params=1.7,  sim=0.5036, cer=0.2656, scicom=True,  langs=76),
     dict(label='Orpheus',                params=3.0,  sim=0.4002, cer=0.6771, scicom=False, langs=76),
     dict(label='Fish Audio S2 Pro',            params=5.0,  sim=0.6097, cer=0.2283, scicom=False, langs=76),
 ]
@@ -626,8 +626,8 @@ def draw_scatter(ax, points, y_key, y_label, y_lim, title, ss, label_offsets=Non
     # label annotations — nudge positions to avoid overlap
     default_offsets = {
         'Dia TTS':               ( 0.12,  0.035),
-        'Multilingual\nTTS 0.6B':( 0.12,  0.055),
-        'Multilingual\nTTS 1.7B':( 0.12, -0.050),
+        'Multilingual-TTS-0.6B-Base':( 0.12,  0.055),
+        'Multilingual-TTS-1.7B-Base':( 0.12, -0.050),
         'Orpheus':               ( 0.12,  0.018),
         'Fish Audio S2 Pro':           (-1.05,  0.018),
     }
@@ -693,8 +693,8 @@ def scatter_main():
                  title='Speaker Similarity ↑  vs Parameter Size',
                  ss=ss,
                  label_offsets={
-                     'Multilingual\nTTS 0.6B': (-0.45,  0.055),
-                     'Multilingual\nTTS 1.7B': ( 0.08, -0.030),
+                     'Multilingual-TTS-0.6B-Base': (-0.45,  0.055),
+                     'Multilingual-TTS-1.7B-Base': ( 0.08, -0.030),
                  })
 
     draw_scatter(ax_cer, MODEL_POINTS,
