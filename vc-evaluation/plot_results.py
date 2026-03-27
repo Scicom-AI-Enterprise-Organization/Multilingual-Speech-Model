@@ -581,7 +581,7 @@ SCATTER_STYLE = dict(
     title_fontsize  = 13,
     axis_fontsize   = 10,
     tick_fontsize   = 9,
-    dpi             = 150,
+    dpi             = 300,
     output_file     = 'scatter_results.png',
 )
 
