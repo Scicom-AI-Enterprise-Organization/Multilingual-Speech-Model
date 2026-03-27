@@ -10,8 +10,8 @@ Open-source multilingual TTS with Voice Cloning support for 150+ languages, buil
 | Multilingual-TTS-1.7B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) | Base |
 | Multilingual-Expressive-TTS-0.6B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-0.6B) | Post-training TTS |
 | Multilingual-Expressive-TTS-1.7B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-1.7B) | Post-training TTS |
-| Multilingual-VC-0.6B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-VC-0.6B) | Post-training VC |
-| Multilingual-VC-1.7B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-VC-1.7B) | Post-training VC |
+| Multilingual-VC-0.6B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-VC-0.6B) | Post-training VC |
+| Multilingual-VC-1.7B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-VC-1.7B) | Post-training VC |
 
 ## Evaluation
 
