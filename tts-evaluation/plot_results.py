@@ -300,7 +300,7 @@ MOS_DATA = [
 METRICS = [
     dict(
         data            = MOS_DATA,
-        title           = 'Mean Opinion Score (MOS)',
+        title           = 'Mean Opinion Score (UTMOSv2 5 repetitions)',
         subtitle        = '↑  higher is better',
         cmap_colors     = ['#922b21', '#e67e22', '#f9e79f',
                            '#1e8449', '#1a5276'],
@@ -310,7 +310,7 @@ METRICS = [
     ),
     dict(
         data            = CER_DATA,
-        title           = 'Character Error Rate (CER)',
+        title           = 'Character Error Rate (whisper-large-v3)',
         subtitle        = '↓  lower is better',
         cmap_colors     = ['#1a5276', '#1e8449', '#f9e79f',
                            '#e67e22', '#922b21'],
@@ -543,7 +543,7 @@ def main():
 
     fig.text(0.5, (top_y + 0.55) / fh,
              'MOS: mean opinion score (UTMOSv2, 1–5 scale)  •  '
-             'CER: character error rate from ASR transcription (Whisper Large V3)',
+             'CER: character error rate from ASR transcription',
              ha='center', va='bottom',
              fontsize=s['caption_size'],
              color=s['caption_color'], style='italic')
@@ -703,7 +703,7 @@ def scatter_main():
 
     draw_scatter(ax_mos, MODEL_POINTS,
                  y_key='mos',
-                 y_label='MOS (UTMOSv2)',
+                 y_label='MOS (UTMOSv2 5 repetitions)',
                  y_lim=(1.5, 3.8),
                  title='MOS ↑  vs Parameter Size',
                  ss=ss,
@@ -715,7 +715,7 @@ def scatter_main():
 
     draw_scatter(ax_cer, MODEL_POINTS,
                  y_key='cer',
-                 y_label='Character Error Rate (CER)',
+                 y_label='Character Error Rate (whisper-large-v3)',
                  y_lim=(-0.02, 0.95),
                  title='CER ↓  vs Parameter Size',
                  ss=ss)

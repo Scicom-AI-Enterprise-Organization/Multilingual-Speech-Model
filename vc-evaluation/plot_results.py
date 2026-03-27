@@ -286,7 +286,7 @@ CER_DATA = [
 METRICS = [
     dict(
         data            = SIM_DATA,
-        title           = 'Speaker Similarity',
+        title           = 'Speaker Similarity (TitaNet-L)',
         subtitle        = '↑  higher is better',
         cmap_colors     = ['#eef4fb', '#a8cce4', '#4a9abe',
                            '#1a7a55', '#a8d878', '#f4e840'],
@@ -296,7 +296,7 @@ METRICS = [
     ),
     dict(
         data            = CER_DATA,
-        title           = 'Character Error Rate (CER)',
+        title           = 'Character Error Rate (whisper-large-v3)',
         subtitle        = '↓  lower is better',
         cmap_colors     = ['#eef6ee', '#a8dca8', '#f0e060',
                            '#e8883a', '#c0281a'],
@@ -523,7 +523,7 @@ def main():
 
     fig.text(0.5, (top_y + 0.40) / fh,
              'Speaker Similarity: cosine similarity of speaker embeddings  •  '
-             'CER: character error rate from ASR transcription  •  Whisper large-v3',
+             'CER: character error rate from ASR transcription',
              ha='center', va='bottom',
              fontsize=s['caption_size'],
              color=s['caption_color'], style='italic')
@@ -688,7 +688,7 @@ def scatter_main():
 
     draw_scatter(ax_sim, MODEL_POINTS,
                  y_key='sim',
-                 y_label='Speaker Similarity',
+                 y_label='Speaker Similarity (TitaNet-L)',
                  y_lim=(0.28, 0.82),
                  title='Speaker Similarity ↑  vs Parameter Size',
                  ss=ss,
@@ -699,7 +699,7 @@ def scatter_main():
 
     draw_scatter(ax_cer, MODEL_POINTS,
                  y_key='cer',
-                 y_label='Character Error Rate (CER)',
+                 y_label='Character Error Rate (whisper-large-v3)',
                  y_lim=(-0.02, 0.82),
                  title='CER ↓  vs Parameter Size',
                  ss=ss)

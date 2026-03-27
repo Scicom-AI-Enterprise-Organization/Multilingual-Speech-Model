@@ -10,8 +10,6 @@ Open-source multilingual TTS with Voice Cloning support for 150+ languages, buil
 | Multilingual-TTS-1.7B-Base | [🤗](https://huggingface.co/Scicom-intl/Multilingual-TTS-1.7B-Base) | Base |
 | Multilingual-Expressive-TTS-0.6B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-0.6B) | Post-training TTS |
 | Multilingual-Expressive-TTS-1.7B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-Expressive-TTS-1.7B) | Post-training TTS |
-| Multilingual-VC-0.6B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-VC-0.6B) | Post-training VC |
-| Multilingual-VC-1.7B | [🤗](https://huggingface.co/Scicom-intl/Multilingual-VC-1.7B) | Post-training VC |
 
 ## Evaluation
 
@@ -51,17 +49,6 @@ Speaker similarity and CER across 76 languages, compared against: Dia TTS, Orphe
 1. Multi-speaker multilingual Expressive TTS — **up to 1.15B tokens**
 
 **Preparation:** [synthetic-description](synthetic-description)
-
-### Voice Cloning
-
-**Sources**
-
-1. https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia
-2. https://huggingface.co/datasets/Scicom-intl/Multilingual-TTS-Voice-Conversion
-
-**Size**
-
-1. Multi-speaker multilingual Voice Cloning — **up to 47.65B tokens**
 
 ## Ablation
 
