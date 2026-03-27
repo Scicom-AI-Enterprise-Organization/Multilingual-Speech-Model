@@ -83,7 +83,8 @@ def loop(indices_device_pair):
             with torch.no_grad():
                 codes = codec.encode_code(torch.tensor(y)[None, None])
             tokens = ''.join([f'<|s_{i}|>' for i in codes[0, 0]])
-            prompt = f"<|im_start|>{r['source_text']}<|speech_start|>{tokens}<|im_end|><|im_start|>{r['target_text']}<|speech_start|>"
+            initial = ''.join([f'<|s_{i}|>' for i in codes[0, 0]][:2])
+            prompt = f"<|im_start|>{r['source_text']}<|speech_start|>{tokens}<|im_end|><|im_start|>{r['target_text']}<|speech_start|>{initial}"
             inputs = tokenizer(prompt,return_tensors="pt", add_special_tokens=True).to(model.device)
 
             with torch.no_grad():
