@@ -1,4 +1,5 @@
 git+https://github.com/huseinzolkepliscicom/dia-remove-compile-encoder
+git+https://github.com/Scicom-AI-Enterprise-Organization/titanet-vectors-fp16
 librosa
 jiwer
 soundfile
