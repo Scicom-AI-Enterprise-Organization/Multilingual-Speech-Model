@@ -27,7 +27,14 @@ rm vc_audio.zip
 
 ## Run Generations
 
-Each prompt is generated **twice** and the scores are averaged to reduce variance. We also upload all the generations done by us at [Scicom-intl/Evaluation-Multilingual-VC](https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC)
+Each prompt is generated **twice** and the scores are averaged to reduce variance. We also upload all the generations done by us at [Scicom-intl/Evaluation-Multilingual-VC](https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC),
+
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/dia-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/resolve/main/multilingual-tts-0.6b.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/multilingual-tts-1.7b.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/orpheus.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/chatterbox.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/fishspeech2.zip
 
 ### Dia TTS
 

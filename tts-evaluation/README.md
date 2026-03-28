@@ -24,19 +24,55 @@ pip install -r requirements.txt
 
 ## Run Generations
 
-Each prompt is generated **twice** and the scores are averaged to reduce variance. We also upload all the generations done by us at [Scicom-intl/Evaluation-Multilingual-VC](https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC)
+Each prompt is generated **twice** and the scores are averaged to reduce variance. We also upload all the generations done by us at [Scicom-intl/Evaluation-Multilingual-VC](https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC),
+
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/dia-tts-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/resolve/main/multilingual-tts-0.6b-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/multilingual-tts-1.7b-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/orpheus-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/chatterbox-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/fishspeech2-tts.zip
+- https://huggingface.co/datasets/Scicom-intl/Evaluation-Multilingual-VC/blob/main/qwen3_tts-tts.zip
+
+### Dia TTS
 
 ```bash
 python3 dia_tts.py --output 'dia-tts'
+```
 
+### Scicom Multilingual TTS
+
+```bash
+# 0.6B
 MODEL_NAME="Scicom-intl/Multilingual-Expressive-TTS-0.6B" python3 multilingual_tts.py \
   --speaker 'multilingual-tts_audio_Grace' --output 'multilingual-tts-0.6b'
+
+# 1.7B
 MODEL_NAME="Scicom-intl/Multilingual-Expressive-TTS-1.7B" python3 multilingual_tts.py \
   --speaker 'multilingual-tts_audio_Grace' --output 'multilingual-tts-1.7b'
+```
 
+### Orpheus
+
+```bash
 python3 orpheus.py   --output 'orpheus'
+```
+
+### Chatterbox
+
+```bash
 python3 chatterbox.py --output 'chatterbox'
+```
+
+### Fish Audio S2 Pro
+
+```bash
 python3 fishspeech2.py --output 'fishspeech2'
+```
+
+### Qwen3 TTS
+
+```bash
 python3 qwen3_tts.py --output 'qwen3_tts'
 ```
 
