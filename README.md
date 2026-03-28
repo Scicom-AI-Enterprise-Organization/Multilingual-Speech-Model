@@ -93,6 +93,10 @@ bash 1.7B.sh
 ### Expressive TTS
 
 ```bash
+# 0.6B
+bash 0.6B-expressive.sh
+
+# 1.7B
 bash 1.7B-expressive.sh
 ```
 
@@ -100,6 +104,10 @@ bash 1.7B-expressive.sh
 
 - Base experiments: https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS
 - Post TTS experiments: https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS-Expressive
+
+## Optimize Inference
+
+For better concurrency, you can use https://github.com/Scicom-AI-Enterprise-Organization/TTS-API-Neucodec
 
 ## Acknowledgements
 
