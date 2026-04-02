@@ -17,9 +17,32 @@ Open-source multilingual TTS with Voice Cloning support for 150+ languages, buil
 
 CER and MOS across 76 languages, compared against: Dia TTS, Orpheus, Chatterbox (23 languages), Fish Audio S2 Pro, Qwen3 TTS (11 languages).
 
+| Model | Languages | CER ↓ | MOS ↑ |
+|-------|:---------:|:-----:|:-----:|
+| Dia TTS | 76 | 0.8131 | 1.8575 |
+| Multilingual TTS 0.6B | 76 | 0.2384 | 3.2273 |
+| Multilingual TTS 1.7B | 76 | **0.2362** | **3.2330** |
+| Orpheus | 76 | 0.6075 | 2.7267 |
+| Chatterbox | 23 | 0.1698 | 2.8405 |
+| Fish Audio S2 Pro | 76 | 0.2370 | 2.9698 |
+| Qwen3 TTS | 11 | **0.1064** | 2.6073 |
+
+> Chatterbox covers 23 languages only; Qwen3 TTS covers 11 languages only. Their averages are not directly comparable to 76-language models.
+
 ### [VC Evaluation](vc-evaluation/README.md)
 
 Speaker similarity and CER across 76 languages, compared against: Dia TTS, Orpheus, Chatterbox (23 languages), Fish Audio S2 Pro.
+
+| Model | Languages | Similarity ↑ | CER ↓ |
+|-------|:---------:|:------------:|:-----:|
+| Dia TTS | 76 | 0.3416 | 0.6867 |
+| Multilingual TTS 0.6B | 76 | 0.4868 | 0.3502 |
+| Multilingual TTS 1.7B | 76 | **0.5036** | 0.3007 |
+| Orpheus | 76 | 0.4002 | 0.6771 |
+| Chatterbox | 23 | **0.6704** | **0.1099** |
+| Fish Audio S2 Pro | 76 | 0.6097 | **0.2283** |
+
+> Chatterbox covers 23 languages only; its averages are not directly comparable to 76-language models.
 
 ## Dataset
 
