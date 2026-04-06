@@ -36,8 +36,8 @@ Speaker similarity and CER across 76 languages, compared against: Dia TTS, Orphe
 | Model | Languages | Similarity ↑ | CER ↓ |
 |-------|:---------:|:------------:|:-----:|
 | Dia TTS | 76 | 0.3416 | 0.6867 |
-| Multilingual TTS 0.6B | 76 | 0.4868 | 0.3502 |
-| Multilingual TTS 1.7B | 76 | **0.5036** | 0.3007 |
+| Multilingual TTS 0.6B | 76 | 0.5051 | 0.2733 |
+| Multilingual TTS 1.7B | 76 | **0.5036** | 0.2656 |
 | Orpheus | 76 | 0.4002 | 0.6771 |
 | Chatterbox | 23 | **0.6704** | **0.1099** |
 | Fish Audio S2 Pro | 76 | 0.6097 | **0.2283** |
