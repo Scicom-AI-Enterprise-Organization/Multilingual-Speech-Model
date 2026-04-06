@@ -76,6 +76,12 @@ python3 fishspeech2.py --output 'fishspeech2'
 python3 qwen3_tts.py --output 'qwen3_tts'
 ```
 
+### OmniVoice
+
+```bash
+python3 omnivoice_tts.py --output 'omnivoice'
+```
+
 ## Evaluate
 
 ### CER

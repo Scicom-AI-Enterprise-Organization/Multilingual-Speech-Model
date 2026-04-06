@@ -70,6 +70,12 @@ python3 chatterbox.py --output 'chatterbox'
 python3 fishspeech2.py --output 'fishspeech2'
 ```
 
+### OmniVoice
+
+```bash
+python3 omnivoice_vc.py --output 'omnivoice'
+```
+
 ## Evaluate
 
 ### Speaker Similarity

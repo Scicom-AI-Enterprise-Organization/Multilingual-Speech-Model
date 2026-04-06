@@ -14,10 +14,12 @@ vc-evaluation/orpheus
 vc-evaluation/*-cer
 vc-evaluation/fish-speech
 vc-evaluation/fishspeech2
+vc-evaluation/omnivoice
 tts-evaluation/dia-tts
 tts-evaluation/multilingual-tts*
 tts-evaluation/orpheus
 tts-evaluation/chatterbox
 tts-evaluation/qwen3_tts
+tts-evaluation/omnivoice
 tts-evaluation/*-cer
 *.zip
