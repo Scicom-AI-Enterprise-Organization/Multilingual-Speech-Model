@@ -1,5 +1,5 @@
 uv venv --python 3.12 --allow-existing
-uv pip install onnxruntime librosa tqdm pandas huggingface_hub
+uv pip install onnxruntime librosa tqdm pandas huggingface_hub datasets
 
 wget https://github.com/microsoft/DNS-Challenge/raw/refs/heads/master/DNSMOS/DNSMOS/sig_bak_ovr.onnx
 
