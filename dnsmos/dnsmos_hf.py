@@ -311,7 +311,144 @@ def save_worker(save_queue, output_path, n_compute, c_save, batch_done):
                 with c_save.get_lock():
                     c_save.value += 1
 
-
+skip_zips = [
+    
+]
+# skip_zips = [
+#     'assamese-asr-dataset_audio.zip', 
+#     'indian-english-nptel-v0_audio.zip', 
+#     'kazakh_speech_dataset_ksd_audio.zip', 
+#     'ghana-english-asr-2700hrs_audio.zip', 
+#     'gemini-flash-2.0-speech_audio.zip', 
+#     'urdu-tts-speaker3_audio.zip', 
+#     'zeroth_korean_ipa_audio.zip', 
+#     'kazakh_speech_mfa_punctuation_audio.zip', 
+#     'afrikaans-speech-dataset_audio.zip', 
+#     'elevenlabs_ru_audio.zip', 
+#     'VietSpeech_audio.zip', 
+#     'IndicTTS_audio.zip', 
+#     'voxbox_audio.zip', 
+#     'hungarian-speech-dataset_audio.zip', 
+#     'Enigma-Dataset_audio.zip', 
+#     'IndicTTS_v2_audio.zip', 
+#     'Vaani_audio.zip', 
+#     'FalAR_audio.zip', 
+#     'mls_dutch_audio.zip', 
+#     'arknights_voices_audio.zip', 
+#     'Czech-Speech-Monospeaker-Honza_audio.zip', 
+#     'NorthTTS_audio_audio.zip', 
+#     'google_audio_audio.zip', 
+#     'WolneLektury-TTS-Polish_audio.zip', 
+#     'malaysian-emilia-v2_audio.zip', 
+#     'AISHELL3_audio.zip', 
+#     'IndicTTS_English_audio.zip', 
+#     'TTS-Hungarian_audio.zip', 
+#     'ToneWebinars_audio.zip', 
+#     'hausa-tts-22k_audio.zip', 
+#     'common-voice-22_audio.zip', 
+#     'singlish-speaker_audio.zip', 
+#     'emilia_zh_audio.zip', 
+#     'JSS_audio.zip', 
+#     'mgb2-arabic_audio.zip', 
+#     'malay-audiobook_audio.zip', 
+#     'WaxalNLP_audio.zip', 
+#     'EA-UD-DI_audio.zip', 
+#     'viVoice_audio.zip', 
+#     'everyayah-phonemes_audio.zip', 
+#     'KSS_audio.zip', 
+#     'japanese-Eroge-Voice-V2_audio.zip', 
+#     'japanese-anime-speech-v2_audio.zip', 
+#     'malaysian-chinese-emilia_audio.zip', 
+#     'uzbekvoice_audio.zip', 
+#     'CommonVoice22_Sidon_audio.zip', 
+#     'Malaysian-TTS-v2_audio.zip', 
+#     'macedonian_audio.zip', 
+#     'MsceneSpeech_audio.zip', 
+#     'YouTube-Cantonese_audio.zip', 
+#     'khursanirevo_chatter_audio.zip', 
+#     'voices_jp_audio.zip', 
+#     'ftspeech_audio.zip', 
+#     'nepali-slr_audio.zip', 
+#     'egyptian-arabic-400k_audio.zip', 
+#     'coral-v3_audio.zip', 
+#     'Thai-dialect-corpus_audio.zip', 
+#     'sova_rudevices_audio.zip', 
+#     'indicvoices_r_audio.zip', 
+#     'Hindi-1482Hrs_audio.zip', 
+#     'openslr-140-hq-Kazakh_audio.zip', 
+#     'marathi-speech-dataset_audio.zip', 
+#     'omnilingual-asr-corpus_audio.zip', 
+#     'MASC-Arabic_audio.zip', 
+#     'anv_data_ke_audio.zip', 
+#     'kazakh-stt_audio.zip', 
+#     'naijavoices-dataset_audio.zip', 
+#     'cml-tts_audio.zip', 
+#     'KeSpeech_audio.zip', 
+#     'libritts_r_filtered_audio.zip',
+#     '700h-tr-turkish-text-to-speech_audio.zip',
+#     '9jalingo-hausa_audio.zip',
+#     '9jalingo-igbo_audio.zip',
+#     'Alexis_audio.zip',
+#     'CommonPhoneDataset_audio-0-0.zip',
+#     'CommonPhoneDataset_audio-2-0.zip',
+#     'CommonPhoneDataset_audio-3-0.zip',
+#     'CommonPhoneDataset_audio-5-0.zip',
+#     'CommonPhoneDataset_audio.zip',
+#     'DarijaTTS-clean_audio.zip',
+#     'Dataset-Text-To-Speech-Indonesia_audio.zip',
+#     'Enigma-Dataset_audio-1-0.zip',
+#     'IndicTTS_Manipuri_audio.zip',
+#     'IndicTTS_Punjabi_audio.zip',
+#     'IndicTTS_Tamil_audio.zip',
+#     'IndicTTS_Telugu_MultiSpeaker_audio.zip',
+#     'Japanese-Anime-Speech-v2_audio-0-0.zip',
+#     'Japanese-Anime-Speech-v2_audio-1-0.zip',
+#     'Japanese-Anime-Speech-v2_audio.zip',
+#     'Lahaja_audio.zip',
+#     'MASC-Arabic_audio-4-0.zip',
+#     'Nanchang_Dialect_Conversational_Speech_Corpus_audio.zip',
+#     'NepaliONE-tts_audio.zip',
+#     'SPRING_INX_Malayalam_R1_audio.zip',
+#     'StoryTTS_audio.zip',
+#     'Tibetan-0310_audio.zip',
+#     'ToneWebinars_audio-2-0.zip',
+#     'WaxalNLP-3-1.zip',
+#     'WaxalNLP-4-2.zip',
+#     'YouTube-Cantonese_audio-3-0.zip',
+#     'YouTube-Cantonese_audio-4-1.zip',
+#     'Zhengzhou_Dialect_Conversational_Speech_Corpus_audio.zip',
+#     'afrispeech_afrikaans_audio.zip',
+#     'afvoices_audio.zip',
+#     'amharic_cleaned_testset_verified_audio.zip',
+#     'anv_data_ke_mas_audio.zip',
+#     'arknights_voices_en_audio.zip',
+#     'assamese_speech_dataset1_audio.zip',
+#     'azerbaijani-audiobooks_audio.zip',
+#     'azerbaijani-tts-dataset_audio.zip',
+#     'biggest-ru-book_audio.zip',
+#     'bulgarian_tts_audio.zip',
+#     'camoes_SI_audio.zip',
+#     'egyptian-arabic-400k_audio-2-0.zip',
+#     'egyptian-arabic-400k_audio-6-0.zip',
+#     'expresso_audio.zip',
+#     'gemini-flash-2.0-speech_data_audio.zip',
+#     'google-marathi_audio.zip',
+#     'indicvoices_r_Marathi_audio.zip',
+#     'indicvoices_r_Punjabi_audio.zip',
+#     'indicvoices_r_Tamil_audio.zip',
+#     'libritts_r_filtered_clean.zip',
+#     'marathi_asr_dataset_audio.zip',
+#     'samromur_children_audio.zip',
+#     'shrutilipi_sanskrit_audio.zip',
+#     'turkish_male_audio.zip',
+#     'ukrainian-speech-dataset_audio-5-0.zip',
+#     'urdu-voice-dataset_audio.zip',
+#     'uzbekvoice-2k-each-accent_audio-2-0.zip',
+#     'uzbekvoice-2k-each-accent_audio-6-0.zip',
+#     'za-african-next-voices_audio-4-0.zip',
+#     'za-african-next-voices_audio-5-0.zip',
+#     'za-african-next-voices_audio-9-0.zip'
+# ]
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -337,6 +474,8 @@ if __name__ == "__main__":
                         help="Randomly sample N zip files to process (default: process all)")
     parser.add_argument("--seed",        type=int, default=42,
                         help="Random seed for --sample (default: 42)")
+    parser.add_argument("--slice",       type=str, default=None,
+                        help="Slice the zip file list before processing, e.g. '0:5' or '10:20' (Python slice syntax)")
     args = parser.parse_args()
 
     if args.zip_cache is None:
@@ -353,10 +492,10 @@ if __name__ == "__main__":
     all_files = list(api.list_repo_files(repo_id=args.repo, repo_type="dataset", token=token))
     zip_files = [
         f for f in all_files
-        if f.endswith('.zip') and 'neucodec' not in f.lower()
+        if f.endswith('.zip') and 'neucodec' not in f.lower() and f not in skip_zips
     ]
     if not zip_files:
-        tqdm.write("No zip files found after neucodec filter.")
+        tqdm.write("No zip files found after neucodec and skip_zips filter.")
         raise SystemExit(1)
     tqdm.write(f"{len(zip_files)} zip file(s) to process (neucodec excluded).")
     tqdm.write(f"Workers — preprocess: {args.n_preprocess}, compute: {args.n_compute}, save: 1")
@@ -368,6 +507,20 @@ if __name__ == "__main__":
         zip_files = random.sample(zip_files, n)
         tqdm.write(f"Sampled {n} zip(s) from full list (seed={args.seed}) — same seed always picks the same zips.")
 
+    # --- Optional slice (applied after sample if both are given) ---
+    if args.slice is not None:
+        parts = args.slice.split(':')
+        if len(parts) not in (2, 3):
+            tqdm.write(f"Invalid --slice value '{args.slice}'. Expected format: 'start:stop' or 'start:stop:step'.")
+            raise SystemExit(1)
+        try:
+            sl = slice(*[int(p) if p else None for p in parts])
+        except ValueError:
+            tqdm.write(f"Invalid --slice value '{args.slice}'. All parts must be integers.")
+            raise SystemExit(1)
+        zip_files = zip_files[sl]
+        tqdm.write(f"Sliced to {len(zip_files)} zip(s) using [{args.slice}].")
+
     # --- Zip-level cache: skip already-completed zips within the (possibly sampled) list ---
     completed_zips = load_completed_zips(args.zip_cache)
     if completed_zips:
@@ -377,6 +530,9 @@ if __name__ == "__main__":
         tqdm.write("All zips already complete. Nothing to do.")
         raise SystemExit(0)
     tqdm.write(f"{len(zip_files)} zip(s) remaining after cache filter.")
+    
+    # Randomize zip order 
+    random.shuffle(zip_files)
 
     # --- Resume: load already-processed filepaths (for partial zips) ---
     processed = load_processed(args.output)
