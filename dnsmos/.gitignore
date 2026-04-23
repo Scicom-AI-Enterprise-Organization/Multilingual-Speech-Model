@@ -1,0 +1,5 @@
+.env
+data
+*.onnx
+*.jsonl
+*.txt 
