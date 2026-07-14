@@ -39,6 +39,11 @@ precision; then faster-whisper word timestamps, placement) → per-shard parquet
 - **PANNs SED checkpoint** comes from zenodo only (no HF mirror; slow ~300 MB). Cached at
   `/root/models/Cnn14_DecisionLevelMax.pth` by `setup_pod.sh`.
 - **RunPod image (Ubuntu 24.04)**: `pip install --break-system-packages`; torch is a system pkg.
+- **HF Xet downloads 401 intermittently on multi-GB files** (CAS reconstruction), even when
+  `hf auth whoami` says logged in and the repo is public; small files pass. Fix: export
+  `HF_TOKEN` explicitly + `HF_HUB_DISABLE_XET=1` (plain CDN path) + retry ×3 — all baked into
+  `scale_generic.sh` (sources `/root/.env_hf`). Keep `HF_HOME=/root/hf` on the local disk,
+  never `/workspace` (network volume on RunPod).
 - **Health-check every pod**: `CDLL("libcuda.so.1").cuInit(0)` must return 0 — nvidia-smi works on
   broken hosts (seen: community 5090 at 216.249.100.66, cuInit=999). `rent_healthy_pod.sh` does
   rent → check → blacklist-and-retry automatically.

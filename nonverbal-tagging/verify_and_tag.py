@@ -163,6 +163,13 @@ def main():
     ap.add_argument("--limit-files", type=int, default=0)
     args = ap.parse_args()
 
+    EMPTY_COLS = ["file", "orig_text", "whisper_text", "tagged_text", "nv_text",
+                  "language", "events", "n_placed"]
+    if not os.path.exists(args.events) or os.path.getsize(args.events) == 0:
+        pd.DataFrame(columns=EMPTY_COLS).to_parquet(f"{args.out_dir}/tagged.parquet")
+        print(f"no events mined; wrote empty {args.out_dir}/tagged.parquet")
+        return
+
     events = [json.loads(l) for l in open(args.events)]
     by_file = defaultdict(list)
     for ev in events:
@@ -273,7 +280,7 @@ def main():
             "n_placed": sum(1 for e in evs if e.get("placed")),
         })
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows, columns=EMPTY_COLS)
     out = f"{args.out_dir}/tagged.parquet"
     df.to_parquet(out)
     print(f"wrote {out}: {len(df)} rows, {int(df['n_placed'].sum())} placed tags")
