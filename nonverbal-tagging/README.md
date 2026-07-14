@@ -45,7 +45,7 @@ from the CLAP gate, not the SED threshold.
 bash rent_healthy_pod.sh           # rents a US 4090/5090, health-checks cuInit, blacklists broken hosts
 # scp/rsync this directory to /root/pipeline on the pod, then:
 bash /root/pipeline/setup_pod.sh   # deps (pip --break-system-packages), PANNs ckpt, CLAP+whisper cache
-hf auth login --token $HF_TOKEN    # for per-shard uploads
+umask 077; echo "HF_TOKEN=hf_..." > /root/.env_hf   # sourced by scale_generic.sh for downloads+uploads
 
 # one shard-set, generic over any Emilia-style repo:
 bash /root/pipeline/scale_generic.sh \
@@ -53,13 +53,31 @@ bash /root/pipeline/scale_generic.sh \
   Scicom-intl/Malaysian-Tamil-Emilia-Nonverbal-Tags \
   "/root/data/meta-tamil/audio_length_ratio_text/*.parquet" \
   audio_processed_trim-0-0.zip audio_processed_trim-1-0.zip ...
+# resuming from shard K (keeps parquet numbering aligned): START_N=K + pass only the remaining zips
 ```
+
+`scale_generic.sh` exports `HF_HUB_DISABLE_XET=1` (Xet CAS 401s intermittently on multi-GB files)
+and retries downloads 3×. After any run, verify the HF `data/` listing matches the shard count —
+upload failures are logged but non-fatal.
 
 Each shard: download zip → unzip → mine → verify+tag → upload parquet/events/qa_crops to HF →
 wipe audio. Progress is durable per shard. ~40–60 min per 10 GB shard on an RTX 4090
 (mining is dataloader-bound; CLAP+whisper only run on event-bearing files).
 
+## Results (July 2026 runs, all shards)
+
+| Dataset | rows | verified events | laughter (nv / discrete) | cost |
+|---|---|---|---|---|
+| Malaysian-Emilia (10 shards, ~3,000 h) | 8,702 | 8,985 | 5,745 / 2,376 | ~$7 |
+| Malaysian-Tamil-Emilia (7 shards) | 2,383 | 2,539 | 2,185 / 907 | ~$2.5 |
+| Malaysian-Chinese-Emilia (21 shards) | 1,655 | 1,694 | 1,189 / 445 | ~$2.5 |
+| **Combined seed** | **12,740** | **13,218** | **9,119 / 3,728** | **~$12** |
+
+Tamil podcasts are ~4× more laugh-dense per audio-hour than Malay; Chinese sits between.
+
 ## Known limitations / next steps
+
+See [plan.md](plan.md) for the full tag-aware-Whisper distillation plan (the volume path).
 
 - Yield is precision-first and low-recall (~3 placed tags / 1k trimmed segments): the trimmed
   segments are post-VAD post-DNSMOS (which removes laughter), and PANNs misses most

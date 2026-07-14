@@ -2,7 +2,8 @@
 
 Guidance for working on the **non-verbal tagging pipeline** (laughter/cough/sigh/… events mined
 from Emilia-style audio into inline-tagged transcripts for expressive TTS). Read `README.md` for
-the pipeline overview; this file is the operational knowledge.
+the pipeline overview and `plan.md` for the next phase (tag-aware Whisper distillation); this
+file is the operational knowledge.
 
 ## Architecture in one line
 
@@ -18,6 +19,9 @@ precision; then faster-whisper word timestamps, placement) → per-shard parquet
 - Yield on quality-trimmed segments ≈ 3 placed tags / 1k segments. This is a **seed dataset**;
   volume comes from the planned NVSpeech-style step: fine-tune Whisper on these events to emit
   `[Label]` tokens, pseudo-label raw (pre-trim) audio.
+- Completed runs (July 2026): Malay 8,985 events / Tamil 2,539 / Chinese 1,694 → combined 13,218
+  verified (9,119 laughter) across the three `*-Nonverbal-Tags` HF repos. Tamil is ~4× more
+  laugh-dense per hour than Malay.
 
 ## Output schema (`data/tagged-*.parquet`)
 
@@ -60,6 +64,13 @@ precision; then faster-whisper word timestamps, placement) → per-shard parquet
 Output repos need explicit `configs:` in README frontmatter (default → `data/*.parquet`,
 events → `events/*.jsonl`) or the mixed parquet/jsonl/wav layout breaks the dataset viewer.
 Upload per shard, never batch at the end — pods are ephemeral.
+
+- **`hf upload` failures are non-fatal in the loop** — a shard can log DONE with nothing on HF
+  (happened to Tamil shard 2 during an HF outage). After every run, diff the HF `data/` tree
+  against the expected shard count before deleting the pod.
+- Output dirs are namespaced per output repo (`/root/out/<repo>-<n>`); with the old shared
+  `gshardN` naming, dataset B's failed shard `rm -rf`'d dataset A's not-yet-uploaded output.
+- Resume/partial runs: `START_N=<k>` keeps parquet numbering aligned when passing a zip subset.
 
 ## Class-quality caveats
 

@@ -92,6 +92,20 @@ Uses [Qwen/Qwen2.5-72B-Instruct](https://deepinfra.com/Qwen/Qwen2.5-72B-Instruct
 
 **Preparation:** [synthetic-description](synthetic-description)
 
+### Non-verbal Tags
+
+Inline non-verbal event tags (laughter, cough, sigh, ...) mined from the Emilia-style corpora with
+PANNs SED + CLAP verification + whisper word-timestamp placement, in two renderings per row:
+Higgs-TTS style (`<|sfx:laughter|>Haha`) and Emilia-NV style (`[Laughter]`).
+
+**Sources → outputs**
+
+1. [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) → [Malaysian-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia-Nonverbal-Tags) — 8,702 rows / 8,985 events
+2. [Malaysian-Tamil-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia) → [Malaysian-Tamil-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia-Nonverbal-Tags) — 2,383 rows / 2,539 events
+3. [Malaysian-Chinese-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia) → [Malaysian-Chinese-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia-Nonverbal-Tags) — 1,655 rows / 1,694 events
+
+**Preparation:** [nonverbal-tagging](nonverbal-tagging)
+
 ## Ablation
 
 ### One Epoch
