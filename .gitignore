@@ -23,3 +23,6 @@ tts-evaluation/qwen3_tts
 tts-evaluation/omnivoice
 tts-evaluation/*-cer
 *.zip
+.env
+nonverbal-tagging-pilot
+.DS_Store
