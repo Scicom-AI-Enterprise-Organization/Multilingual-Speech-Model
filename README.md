@@ -127,12 +127,45 @@ One-epoch results used conservative learning rates, so we ran a focused search:
 2. 100 steps, warmup 50 steps
 3. FP32-BF16 mixed precision
 4. Run on Qwen3 1.7B Base only
-5. Grid search over AdamW LR, Muon LR, and decay rate — [hyperparameter_search.py](hyperparameter_search.py)
-6. Aggressive LR sweep — [hyperparameter_search_extra.py](hyperparameter_search_extra.py) — turned out best
+5. Grid search over AdamW LR, Muon LR, and decay rate
+6. Aggressive LRs (AdamW 1e-3, Muon 1e-2, decay 0.01) turned out best
 7. AdamW-only with the same aggressive LR — [1.7B-adamw-aggresive.sh](1.7B-adamw-aggresive.sh)
 8. **Adding Muon performed better**
 
 <img src="hyperparameter-search.png" width="50%">
+
+#### Optimizer search
+
+The original grid scripts only covered Muon+AdamW, so the harness was rebuilt around a
+pluggable-optimizer trainer: [hyperparameter_search.py](hyperparameter_search.py) drives
+[qwen3_optimizer_search.py](qwen3_optimizer_search.py) and sweeps each optimizer over its
+own LR grid under the identical 100-step setup above.
+
+| optimizer | placement | swept LRs |
+|---|---|---|
+| `adamw` | everything | 5e-4 · 1e-3 · 2e-3 |
+| `muon` | 2D hidden weights (AdamW on embeddings/head/rest) | matrix 5e-3 · 1e-2 · 2e-2 |
+| `shampoo` ([ScalableShampoo](https://github.com/kozistr/pytorch_optimizer)) | 2D hidden weights (AdamW on rest) | matrix 5e-4 · 1e-3 · 3e-3 |
+| `soap` | 2D hidden weights (AdamW on rest) | matrix 1e-3 · 3e-3 · 1e-2 |
+| `lion` | everything | 1e-4 · 3e-4 (wd 0.1) |
+| `ademamix` | everything | 5e-4 · 1e-3 |
+
+Hybrid optimizers use the same 2D-hidden-weight/AdamW split as Muon
+("Muon is Scalable for LLM Training", arXiv:2502.16982), so the comparison is
+apples-to-apples. Runs resume by name (`search_state/<run>.json`) and the harness ranks
+finished runs by mean train loss over the last 10 steps into `search_state/summary.json`.
+
+```bash
+pip install pytorch_optimizer   # needed for shampoo / soap / lion / ademamix
+
+# everything, or a subset:
+python hyperparameter_search.py --train-file <multipacking dir>
+python hyperparameter_search.py --train-file <multipacking dir> --optimizers muon shampoo soap
+python hyperparameter_search.py --train-file <multipacking dir> --dry-run   # print commands only
+```
+
+The train file must be a ChiniDataset multipacking directory (see
+[preparation](preparation)); custom grids go in `--grid-json`.
 
 ## Training
 

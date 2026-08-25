@@ -14,13 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...) on a text file or a dataset.
+Optimizer-search trainer: one short-run trainer with a pluggable optimizer, driven by
+hyperparameter_search.py. Supersedes qwen3_muonadamw_search.py (`--optimizer muon`
+reproduces it exactly).
 
-Here is the full list of checkpoints on the hub that can be fine-tuned by this script:
-https://huggingface.co/models?filter=text-generation
+Optimizers:
+  adamw               torch.optim.AdamW on everything
+  muon                torch.optim.Muon on 2D hidden weights + AdamW on embeddings/head/rest
+  shampoo             pytorch_optimizer.ScalableShampoo on 2D hidden weights + AdamW on rest
+  soap                pytorch_optimizer.SOAP on 2D hidden weights + AdamW on rest
+  lion                pytorch_optimizer.Lion on everything
+  ademamix            pytorch_optimizer.AdEMAMix on everything
+
+Hybrid modes take `--matrix_lr` for the 2D-hidden-weight sub-optimizer while
+`--learning_rate` drives the AdamW side (and everything for full-model optimizers).
+Weight decay comes from `--weight_decay`; norm/bias parameters never decay.
 """
-# You can also adapt this script on your own causal language modeling
-# task. Pointers for this are left as comments.
 
 import torch
 from torch import nn
@@ -192,16 +201,35 @@ class DataTrainingArguments:
         },
     )
 
+
+@dataclass
+class SearchArguments:
+    """Search-only knobs on top of TrainingArguments."""
+
+    optimizer: str = field(
+        default='adamw',
+        metadata={"help": "adamw | muon | shampoo | soap | lion | ademamix"},
+    )
+    matrix_lr: Optional[float] = field(
+        default=None,
+        metadata={"help": "LR for the 2D-hidden-weight sub-optimizer in hybrid modes (muon/shampoo/soap)."},
+    )
+    num_decay_steps: int = field(
+        default=243, metadata={"help": "WSD scheduler decay steps."})
+    min_lr_ratio: float = field(
+        default=0.1, metadata={"help": "WSD scheduler final LR ratio."})
+
+
 class Model(Qwen3ForCausalLM):
     def __init__(self, config):
         super().__init__(config)
         self.loss = LigerFusedLinearCrossEntropyLoss(reduction="sum")
-        
+
     def forward(self, input_ids, attention_mask=None, position_ids=None, labels=None, num_items_in_batch=None, **kwargs):
         super_out = self.model.forward(
-            input_ids = input_ids, 
-            position_ids = position_ids, 
-            attention_mask = attention_mask, 
+            input_ids = input_ids,
+            position_ids = position_ids,
+            attention_mask = attention_mask,
             output_hidden_states = True,
             **kwargs,
         )
@@ -216,195 +244,221 @@ class Model(Qwen3ForCausalLM):
             return {'loss': loss}
         return super_out
 
-class MuonPlusAdamW(torch.optim.Optimizer):
+
+def split_matrix_params(named_params):
+    """2D hidden-layer weights vs everything else (embeddings, head, norms, biases).
+
+    The matrix side is what Muon/Shampoo/SOAP precondition; the rest stays on AdamW —
+    the split used by Moonshot's "Muon is Scalable for LLM Training" (arXiv:2502.16982).
     """
-    Hybrid optimizer: Muon for hidden layer 2D weights, AdamW for everything else.
-    Based on Moonshot AI's "Muon is Scalable for LLM Training" (arXiv:2502.16982)
+    embed_patterns = ('embed', 'wte', 'wpe')
+    head_patterns = ('lm_head', 'head', 'output')
+
+    matrix, matrix_names, rest, rest_names = [], [], [], []
+    for name, p in named_params:
+        if not p.requires_grad:
+            continue
+        name_lower = name.lower()
+        is_embed = any(pattern in name_lower for pattern in embed_patterns)
+        is_head = any(pattern in name_lower for pattern in head_patterns)
+        if p.ndim == 2 and not is_embed and not is_head:
+            matrix.append(p)
+            matrix_names.append(name)
+        else:
+            rest.append(p)
+            rest_names.append(name)
+    return matrix, matrix_names, rest, rest_names
+
+
+def decay_param_groups(named_params, lr, weight_decay):
+    """HF-style grouping: no weight decay on 1D params (norms, biases)."""
+    decay = [p for n, p in named_params if p.requires_grad and p.ndim >= 2]
+    no_decay = [p for n, p in named_params if p.requires_grad and p.ndim < 2]
+    return [
+        {'params': decay, 'lr': lr, 'weight_decay': weight_decay},
+        {'params': no_decay, 'lr': lr, 'weight_decay': 0.0},
+    ]
+
+
+class HybridOptimizer(torch.optim.Optimizer):
+    """Matrix optimizer (Muon/Shampoo/SOAP) on 2D hidden weights + AdamW on everything else.
+
+    Generalization of the MuonPlusAdamW hybrid from qwen3_muonadamw.py; the
+    step/state_dict/param_groups plumbing keeps HF Trainer + LambdaLR schedulers happy.
     """
 
     def __init__(
         self,
-        params,
-        lr: float = 1e-4,
-        # Muon hyperparameters
-        muon_lr: Optional[float] = 1e-4,
-        muon_momentum: float = 0.95,
-        muon_weight_decay: float = 0.1,
-        muon_nesterov: bool = True,
-        muon_ns_steps: int = 5,
-        # AdamW hyperparameters
-        # make sure consistent with https://huggingface.co/docs/transformers/v4.56.2/en/main_classes/trainer#transformers.TrainingArguments
+        named_params,
+        matrix_factory,          # callable(params, lr, weight_decay) -> torch.optim.Optimizer
+        lr: float = 1e-4,        # AdamW side
+        matrix_lr: float = 1e-3,
+        weight_decay: float = 0.1,
         adamw_betas: tuple = (0.9, 0.999),
-        adamw_weight_decay: float = 0.1,
         adamw_eps: float = 1e-8,
-        # Parameter filtering
-        embed_patterns: tuple = ('embed', 'wte', 'wpe'),
-        head_patterns: tuple = ('lm_head', 'head', 'output'),
     ):
-        """
-        Args:
-            params: Model parameters
-            lr: Base learning rate (used for AdamW, Muon uses muon_lr)
-            muon_lr: Learning rate for Muon (default 1e-4)
-            muon_momentum: Momentum for Muon
-            muon_weight_decay: Weight decay for Muon (critical for scaling!)
-            muon_nesterov: Use Nesterov momentum
-            muon_ns_steps: Newton-Schulz iteration steps
-            adamw_betas: Adam betas
-            adamw_weight_decay: Weight decay for AdamW
-            adamw_eps: Adam epsilon
-            embed_patterns: Name patterns for embedding layers (use AdamW)
-            head_patterns: Name patterns for output head layers (use AdamW)
-        """
         if lr <= 0:
             raise ValueError("lr must be positive")
 
-        # Convert to list of (name, param) if needed
-        params = list(params)
-        
-        if params and isinstance(params[0], tuple):
-            named_params = params
-        else:
-            named_params = [('', p) for p in params]
-
-        muon_params, muon_params_name = [], []
-        adamw_params, adamw_params_name = [], []
-
-        embed_patterns: tuple = ('embed', 'wte', 'wpe')
-        head_patterns: tuple = ('lm_head', 'head', 'output')
-
-        for name, p in named_params:
-            if not p.requires_grad:
-                continue
-            
-            name_lower = name.lower()
-            
-            # Check if this is an embedding or head layer
-            is_embed = any(pattern in name_lower for pattern in embed_patterns)
-            is_head = any(pattern in name_lower for pattern in head_patterns)
-            
-            # Muon: only for 2D hidden layer weights (not embed/head)
-            if p.ndim == 2 and not is_embed and not is_head:
-                muon_params.append(p)
-                muon_params_name.append(name)
-            else:
-                adamw_params.append(p)
-                adamw_params_name.append(name)
-
-        print('muon_params_name', muon_params_name)
-        print('adamw_params_name', adamw_params_name)
-
-        # Default Muon LR is 0.02 (paper recommendation)
-        effective_muon_lr = muon_lr if muon_lr is not None else 0.02
+        named_params = list(named_params)
+        matrix_params, matrix_names, rest_params, rest_names = split_matrix_params(named_params)
+        print('matrix_params_name', matrix_names)
+        print('adamw_params_name', rest_names)
 
         param_groups = [
-            {"params": muon_params, "type": "muon", "lr": effective_muon_lr},
-            {"params": adamw_params, "type": "adamw", "lr": lr},
+            {"params": matrix_params, "type": "matrix", "lr": matrix_lr},
+            {"params": rest_params, "type": "adamw", "lr": lr},
         ]
-
-        defaults = {"lr": lr}
-        self._muon = None
+        self._matrix = None
         self._adamw = None
-        
-        super().__init__(param_groups, defaults)
+        super().__init__(param_groups, {"lr": lr})
 
-        # Store param counts for logging
-        self.muon_param_count = sum(p.numel() for p in muon_params)
-        self.adamw_param_count = sum(p.numel() for p in adamw_params)
+        self.matrix_param_count = sum(p.numel() for p in matrix_params)
+        self.adamw_param_count = sum(p.numel() for p in rest_params)
 
-        # Now create the actual sub-optimizers
-        if muon_params:
-            self._muon = torch.optim.Muon(
-                muon_params,
-                lr=effective_muon_lr,
-                momentum=muon_momentum,
-                weight_decay=muon_weight_decay,
-                nesterov=muon_nesterov,
-                ns_steps=muon_ns_steps,
-            )
-
-        if adamw_params:
+        if matrix_params:
+            self._matrix = matrix_factory(matrix_params, matrix_lr, weight_decay)
+        if rest_params:
             self._adamw = torch.optim.AdamW(
-                adamw_params,
+                rest_params,
                 lr=lr,
                 betas=adamw_betas,
-                weight_decay=adamw_weight_decay,
+                weight_decay=weight_decay,
                 eps=adamw_eps,
             )
 
     def __repr__(self):
         return (
-            f"MuonPlusAdamW(\n"
-            f"  muon_params: {self.muon_param_count:,}\n"
-            f"  adamw_params: {self.adamw_param_count:,}\n"
+            f"HybridOptimizer(\n"
+            f"  matrix: {type(self._matrix).__name__} {self.matrix_param_count:,} params\n"
+            f"  adamw: {self.adamw_param_count:,} params\n"
             f")"
         )
 
     @torch.no_grad()
-    def step(self, closure = None):
+    def step(self, closure=None):
         loss = None
         if closure is not None:
             with torch.enable_grad():
                 loss = closure()
-
         if self._adamw is not None:
             self._adamw.step()
-        if self._muon is not None:
-            self._muon.step()
-
+        if self._matrix is not None:
+            self._matrix.step()
         return loss
 
     def zero_grad(self, set_to_none: bool = True):
         if self._adamw is not None:
             self._adamw.zero_grad(set_to_none)
-        if self._muon is not None:
-            self._muon.zero_grad(set_to_none)
+        if self._matrix is not None:
+            self._matrix.zero_grad(set_to_none)
 
     def state_dict(self):
-        """Return combined state dict."""
         return {
-            'muon': self._muon.state_dict() if self._muon else None,
+            'matrix': self._matrix.state_dict() if self._matrix else None,
             'adamw': self._adamw.state_dict() if self._adamw else None,
         }
 
     def load_state_dict(self, state_dict):
-        """Load combined state dict."""
-        if self._muon is not None and state_dict.get('muon'):
-            self._muon.load_state_dict(state_dict['muon'])
+        if self._matrix is not None and state_dict.get('matrix'):
+            self._matrix.load_state_dict(state_dict['matrix'])
         if self._adamw is not None and state_dict.get('adamw'):
             self._adamw.load_state_dict(state_dict['adamw'])
 
     @property
     def param_groups(self):
-        """Return combined param groups from both optimizers."""
-        # During __init__, before sub-optimizers are created, fall back to stored groups
-        if not hasattr(self, '_muon'):
-            # Access the underlying attribute directly during initialization
+        if not hasattr(self, '_matrix'):
             return self.__dict__.get('param_groups', [])
-        
-        if self._muon is None and self._adamw is None:
+        if self._matrix is None and self._adamw is None:
             return self.__dict__.get('param_groups', [])
-        
         groups = []
-        if self._muon is not None:
-            groups.extend(self._muon.param_groups)
+        if self._matrix is not None:
+            groups.extend(self._matrix.param_groups)
         if self._adamw is not None:
             groups.extend(self._adamw.param_groups)
         return groups
 
     @param_groups.setter
     def param_groups(self, value):
-        # This is needed for compatibility but we manage param_groups internally
+        # managed by the sub-optimizers
         pass
-        
+
+
+def build_optimizer(model, search_args, training_args):
+    name = search_args.optimizer.lower()
+    lr = training_args.learning_rate
+    wd = training_args.weight_decay
+    matrix_lr = search_args.matrix_lr
+
+    hybrid = name in ('muon', 'shampoo', 'soap')
+    if hybrid and matrix_lr is None:
+        raise ValueError(f'--matrix_lr is required for optimizer={name}')
+
+    if name == 'adamw':
+        return torch.optim.AdamW(
+            decay_param_groups(model.named_parameters(), lr, wd),
+            lr=lr, betas=(0.9, 0.999), eps=1e-8,
+        )
+
+    if name == 'muon':
+        def factory(params, mlr, decay):
+            return torch.optim.Muon(
+                params, lr=mlr, momentum=0.95, weight_decay=decay,
+                nesterov=True, ns_steps=5,
+            )
+    elif name == 'shampoo':
+        from pytorch_optimizer import ScalableShampoo
+
+        def factory(params, mlr, decay):
+            # preconditioning_compute_steps default (1000) would never refresh the
+            # preconditioner inside a 100-step search run
+            return ScalableShampoo(
+                params, lr=mlr, betas=(0.9, 0.999), weight_decay=decay,
+                decoupled_weight_decay=True,
+                start_preconditioning_step=10,
+                preconditioning_compute_steps=10,
+                statistics_compute_steps=1,
+            )
+    elif name == 'soap':
+        from pytorch_optimizer import SOAP
+
+        def factory(params, mlr, decay):
+            return SOAP(
+                params, lr=mlr, betas=(0.95, 0.95), weight_decay=decay,
+                precondition_frequency=10,
+            )
+    elif name == 'lion':
+        from pytorch_optimizer import Lion
+        return Lion(
+            decay_param_groups(model.named_parameters(), lr, wd),
+            lr=lr, betas=(0.9, 0.99), weight_decouple=True,
+        )
+    elif name == 'ademamix':
+        from pytorch_optimizer import AdEMAMix
+        return AdEMAMix(
+            decay_param_groups(model.named_parameters(), lr, wd),
+            lr=lr, betas=(0.9, 0.999, 0.9999), alpha=5.0, weight_decouple=True,
+        )
+    else:
+        raise ValueError(f'unknown optimizer {name!r}')
+
+    return HybridOptimizer(
+        model.named_parameters(),
+        matrix_factory=factory,
+        lr=lr,
+        matrix_lr=matrix_lr,
+        weight_decay=wd,
+    )
+
+
 def main():
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, SearchArguments, TrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        model_args, data_args, training_args = parser.parse_json_file(
+        model_args, data_args, search_args, training_args = parser.parse_json_file(
             json_file=os.path.abspath(sys.argv[1]))
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, search_args, training_args = parser.parse_args_into_dataclasses()
 
     # Setup logging
     logging.basicConfig(
@@ -426,6 +480,7 @@ def main():
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}" +
         f"distributed training: {training_args.parallel_mode.value == 'distributed'}, 16-bits training: {training_args.fp16}")
     logger.info(f"Training/evaluation parameters {training_args}")
+    logger.info(f"Search parameters {search_args}")
 
     last_checkpoint = None
     if os.path.isdir(
@@ -439,7 +494,7 @@ def main():
     for i in range(65536):
         extra.append(AddedToken(f'<|s_{i}|>'))
     tokenizer.add_tokens(extra)
-    
+
     torch_dtype = (
         model_args.torch_dtype
         if model_args.torch_dtype in ["auto", None]
@@ -464,7 +519,7 @@ def main():
             if data['attention_mask'].max() > sequence_length:
                 print(data)
                 return
-        
+
             return data
 
         def __len__(self):
@@ -506,16 +561,9 @@ def main():
             'max_length_k': max_seqlen_q
         }
 
-    optimizer = MuonPlusAdamW(
-        model.named_parameters(), 
-        lr=training_args.lr_scheduler_kwargs['lr'],
-        muon_lr=training_args.lr_scheduler_kwargs['lr_muon'],
-        muon_momentum=0.95,
-        muon_weight_decay=training_args.lr_scheduler_kwargs['decay'],
-        adamw_weight_decay=training_args.lr_scheduler_kwargs['decay'],
-        muon_nesterov=True,
-        muon_ns_steps=5,
-    )
+    optimizer = build_optimizer(model, search_args, training_args)
+    print(optimizer)
+
     len_dataset = math.ceil(len(dataset) / torch.cuda.device_count())
     len_dataloader = math.ceil(len_dataset / training_args.per_device_train_batch_size)
     num_update_steps_per_epoch = max(
@@ -526,11 +574,11 @@ def main():
     max_steps = math.ceil(training_args.num_train_epochs * num_update_steps_per_epoch)
     print('max_steps', max_steps)
     lr_scheduler = get_wsd_schedule(
-        optimizer, 
+        optimizer,
         num_warmup_steps=training_args.warmup_steps,
-        num_decay_steps=training_args.lr_scheduler_kwargs['num_decay_steps'],
+        num_decay_steps=search_args.num_decay_steps,
         num_training_steps=max_steps,
-        min_lr_ratio=training_args.lr_scheduler_kwargs['min_lr_ratio'],
+        min_lr_ratio=search_args.min_lr_ratio,
     )
 
     trainer = Trainer(
@@ -546,9 +594,13 @@ def main():
     )
 
     trainer.train()
-  
-    print("Muon LR:", optimizer._muon.param_groups[0]['lr'] if optimizer._muon else None)
-    print("AdamW LR:", optimizer._adamw.param_groups[0]['lr'] if optimizer._adamw else None)
+
+    # search runs are shorter than save_steps, so persist the loss curve explicitly
+    # for hyperparameter_search.py to rank runs
+    if trainer.is_world_process_zero():
+        trainer.state.save_to_json(os.path.join(training_args.output_dir, 'trainer_state.json'))
+
+    print('final param group LRs:', [g['lr'] for g in optimizer.param_groups])
 
 
 def _mp_fn(index):

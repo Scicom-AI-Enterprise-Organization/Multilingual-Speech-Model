@@ -17,7 +17,7 @@ speech tokens `<|s_NNNN|>` at 50 tokens/s). The *serving* stack lives in a separ
 | `dnsmos/` | DNSMOS quality-filter pipeline (score → threshold → re-upload) |
 | `tts-evaluation/`, `vc-evaluation/` | 76-language CER/MOS and speaker-similarity benchmarks vs Dia/Orpheus/Chatterbox/Fish/Qwen3-TTS |
 | `vc-rl/grpo_async_vllm.py` | async GRPO trainer (7 DDP ranks + 1 dedicated vLLM rank, NCCL weight sync). **Reward is still `example_reward_fn` placeholder** — the intended reward is TitaNet similarity + (1−CER) + DNSMOS, reusable from `vc-evaluation/` + `dnsmos/` |
-| `hyperparameter_search*.py` | LR search harness (see README ablation section) |
+| `hyperparameter_search.py` + `qwen3_optimizer_search.py` | optimizer/LR sweep harness — adamw, muon, shampoo, soap, lion, ademamix (hybrid ones share Muon's 2D-hidden/AdamW split); resumes via `search_state/`, ranks by last-10-step loss (see README ablation section) |
 
 ## Facts that shape decisions
 
