@@ -12,14 +12,18 @@ shards instead of mosaicml-streaming MDS.
 
 ### Datasets
 
-| name | source (config) | reject filter | upload target |
-|---|---|---|---|
-| `malaysian-tamil-emilia` | [Malaysian-Tamil-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia) (`permutation_sample`) | `audio_length_ratio_text` | `Scicom-intl/Malaysian-Tamil-Emilia-multipacking-10k` |
-| `malaysian-chinese-emilia` | [Malaysian-Chinese-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia) (`speaker_permutation_sample`) | `audio_length_ratio_text` | `Scicom-intl/Malaysian-Chinese-Emilia-multipacking-10k` |
-| `malaysian-emilia-dialects` | [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) (`dialects_v1_permutation_sample`) | `dialects_v1_audio_length_ratio_text` | `Scicom-intl/Malaysian-Emilia-dialects-multipacking-10k` |
-| `malaysian-emilia` | [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) (default; `malaysian-chinese*` rows skipped) | `audio_length_ratio_text` | `Scicom-intl/Malaysian-Emilia-multipacking-10k` |
-| `youtube-cantonese-emilia` | [YouTube-Cantonese-Emilia](https://huggingface.co/datasets/Scicom-intl/YouTube-Cantonese-Emilia) (`permutation_sample`) | — (repo has none) | `Scicom-intl/YouTube-Cantonese-Emilia-multipacking-10k` |
-| `emilia-yodas` | [Emilia-YODAS-Voice-Conversion](https://huggingface.co/datasets/Scicom-intl/Emilia-YODAS-Voice-Conversion) (default) | `audio_length_ratio_text` | `Scicom-intl/Emilia-YODAS-multipacking-10k` |
+Sizes are from the 2026-08-24 run (blocks × 10,240 tokens; greedy packing, so true
+counts sit slightly below):
+
+| name | source (config) | reject filter | blocks | tokens | upload target |
+|---|---|---|---|---|---|
+| `malaysian-tamil-emilia` | [Malaysian-Tamil-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia) (`permutation_sample`) | `audio_length_ratio_text` | 81,723 | ~0.84B | `Scicom-intl/Malaysian-Tamil-Emilia-multipacking-10k` |
+| `malaysian-chinese-emilia` | [Malaysian-Chinese-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia) (`speaker_permutation_sample`) | `audio_length_ratio_text` | 178,271 | ~1.83B | `Scicom-intl/Malaysian-Chinese-Emilia-multipacking-10k` |
+| `malaysian-emilia-dialects` | [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) (`dialects_v1_permutation_sample`) | `dialects_v1_audio_length_ratio_text` | 565,604 | ~5.79B | `Scicom-intl/Malaysian-Emilia-dialects-multipacking-10k` |
+| `malaysian-emilia` | [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) (default; `malaysian-chinese*` rows skipped) | `audio_length_ratio_text` | 775,589 | ~7.94B | `Scicom-intl/Malaysian-Emilia-multipacking-10k` |
+| `youtube-cantonese-emilia` | [YouTube-Cantonese-Emilia](https://huggingface.co/datasets/Scicom-intl/YouTube-Cantonese-Emilia) (`permutation_sample`) | — (repo has none) | 142,711 | ~1.46B | `Scicom-intl/YouTube-Cantonese-Emilia-multipacking-10k` |
+| `emilia-yodas` | [Emilia-YODAS-Voice-Conversion](https://huggingface.co/datasets/Scicom-intl/Emilia-YODAS-Voice-Conversion) (default) | `audio_length_ratio_text` | 1,902,702 | ~19.48B | `Scicom-intl/Emilia-YODAS-multipacking-10k` |
+| **total** | | | **3,646,600** | **~37.3B** | |
 
 ### What it does
 
