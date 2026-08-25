@@ -26,3 +26,4 @@ tts-evaluation/*-cer
 .env
 nonverbal-tagging-pilot
 .DS_Store
+scicom

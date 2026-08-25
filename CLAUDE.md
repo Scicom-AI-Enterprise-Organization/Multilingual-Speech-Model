@@ -11,7 +11,7 @@ speech tokens `<|s_NNNN|>` at 50 tokens/s). The *serving* stack lives in a separ
 |---|---|
 | `*.sh` (`1.7B.sh`, `0.6B-vc.sh`, `1.7B-expressive.sh`, …) | torchrun launch scripts per model/stage; pair with `qwen3_*.py` trainers (AdamW vs Muon+AdamW, WSD LR) |
 | `qwen3_adamw.py`, `qwen3_muonadamw*.py` | trainers; `_post` = post-training variant |
-| `preparation/` | multipacking notebooks: (text, speech-token) pairs → 10,240-token MDS blocks. Samples are **attention-isolated** (per-doc position_ids reset + length-based block-diagonal mask). Prompt: `<|im_start|>{speaker}: {text}<|speech_start|>{tokens}<|im_end|>` |
+| `preparation/` | multipacking: (text, speech-token) pairs → 10,240-token blocks. `multipacking.py` (VC pairs, all 6 datasets) writes **ChiniDataset parquet**; the TTS/expressive notebooks still write MDS. Samples are **attention-isolated** (per-doc position_ids reset + length-based block-diagonal mask). Prompt: `<|im_start|>{speaker}: {text}<|speech_start|>{tokens}<|im_end|>` (VC pairs omit `{speaker}: `). **Own CLAUDE.md — read it before touching path conventions or the remote box** |
 | `synthetic-description/` | expressive-TTS descriptions: acoustic stats + classifiers → bins → LLM summary (→ `Scicom-intl/ExpressiveSpeech`). Expressive prompt adds `<|description|>` |
 | `nonverbal-tagging/` | non-verbal event mining (laughter/cough/…) → `*-Nonverbal-Tags` HF datasets. **Own CLAUDE.md with all pipeline + RunPod gotchas — read it before touching pods or HF bulk transfers** |
 | `dnsmos/` | DNSMOS quality-filter pipeline (score → threshold → re-upload) |
