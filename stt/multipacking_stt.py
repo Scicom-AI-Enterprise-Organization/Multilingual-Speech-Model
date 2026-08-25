@@ -23,13 +23,20 @@ attention-isolated documents (per-doc position_ids reset, attention_mask = per-d
 lengths).
 
 Usage:
-    python multipacking_stt.py --base-dir /share/stt --workers 96
+    python multipacking_stt.py --base-dir /share/stt --workers 96          # everything, one wave
     python multipacking_stt.py --base-dir /share/stt --subsets 'malaysian-*' 'emilia_zh'
-    python multipacking_stt.py --base-dir /share/stt --stage download
-    python multipacking_stt.py --base-dir /share/stt --stage upload
+    python multipacking_stt.py --base-dir /share/stt --stage download      # zips + metadata only
 
-The full corpus is 118M rows / 1493 subsets — check disk before an unfiltered run
-and use --subsets to scope.
+    # disk-bounded full run: ~177GB of token JSONs + ~270GB packed output do not
+    # fit at once, so process in waves (upload + free between waves):
+    python multipacking_stt.py --num-waves 2 --wave 0 --workers 96
+    python multipacking_stt.py --stage upload          # push wave 0, then free neucodec/ + wave-0 shards
+    python multipacking_stt.py --num-waves 2 --wave 1 --workers 96
+    python multipacking_stt.py --stage merge           # root index.json across waves
+    python multipacking_stt.py --stage upload          # -> Scicom-intl/Multilingual-STT-multipacking-10k
+
+The language-token list is always computed over ALL selected metadata (cached in
+languages.json), so token IDs are identical across waves.
 """
 
 import os
@@ -74,25 +81,46 @@ def match_subset(subset, patterns):
 
 # ---------------------------------------------------------------- download
 
-def download(base, subsets, delete_zips=True):
-    from huggingface_hub import HfApi, hf_hub_download, snapshot_download
+def audio_folder(parquet_file):
+    """Top-level audio folder a subset's rows point into (from the first row)."""
+    import pyarrow.parquet as pq
+    pf = pq.ParquetFile(parquet_file)
+    for batch in pf.iter_batches(batch_size=1, columns=['audio_filename']):
+        return str(batch.column(0)[0]).partition('/')[0]
+    return None
+
+
+def download_meta(base, subsets):
+    from huggingface_hub import snapshot_download
 
     meta_dir = base / 'meta'
     allow = [f'{p}/*.parquet' for p in subsets] if subsets else ['*/*.parquet']
     snapshot_download(META_REPO, repo_type='dataset', allow_patterns=allow, local_dir=meta_dir)
+    return meta_dir
+
+
+def download_zips(base, meta_files, delete_zips=True):
+    """Fetch the `<audio folder>_neucodec.zip` for every given metadata parquet.
+
+    Zip names come from the audio folder inside `audio_filename`, which is NOT
+    always the subset directory name (e.g. subset `emilia_zh` ->
+    `emilia_zh_audio_neucodec.zip`).
+    """
+    from huggingface_hub import HfApi, hf_hub_download
 
     data_dir = base / 'neucodec'
     marker_dir = data_dir / '.extracted'
     marker_dir.mkdir(parents=True, exist_ok=True)
     zips_dir = base / 'zips'
 
-    files = HfApi().list_repo_files(TOKENS_REPO, repo_type='dataset')
-    wanted = sorted(
-        f for f in files
-        if f.endswith('_neucodec.zip') and match_subset(f[: -len('_neucodec.zip')], subsets)
-    )
+    folders = {audio_folder(f) for f in meta_files}
+    folders.discard(None)
+    available = set(HfApi().list_repo_files(TOKENS_REPO, repo_type='dataset'))
+    wanted = sorted(f'{fo}_neucodec.zip' for fo in folders if f'{fo}_neucodec.zip' in available)
+    no_zip = sorted(fo for fo in folders if f'{fo}_neucodec.zip' not in available)
     todo = [f for f in wanted if not (marker_dir / f'{f}.done').exists()]
-    log(f'{TOKENS_REPO}: {len(wanted)} neucodec zips, {len(todo)} to download+extract')
+    log(f'{TOKENS_REPO}: {len(wanted)} neucodec zips wanted, {len(todo)} to download+extract, '
+        f'{len(no_zip)} audio folders have no zip yet (rows will be skipped)')
     if not todo:
         return
 
@@ -274,50 +302,63 @@ def snake_chunks(files, workers):
     return groups
 
 
-def pack(base, subsets, workers):
+def pack(base, all_files, wave_files, wave_name, workers):
     from chinidataset import StreamingDataset
     from chinidataset.util import merge_index
 
-    files = [f for f in (base / 'meta').glob('*/*.parquet') if match_subset(f.parent.name, subsets)]
-    if not files:
-        raise SystemExit('no metadata parquets found — run --stage download first')
-    log(f'{len(files)} metadata parquet files')
-
-    languages = collect_languages(base, files)
+    # language tokens come from ALL selected metadata, not just this wave, so the
+    # tokenizer (and therefore token IDs) is identical across waves
+    languages = collect_languages(base, all_files)
     log(f'{len(languages)} languages')
     tokenizer, stt_tokens = build_tokenizer(languages)
 
     out_root = base / 'out' / OUT_NAME
-    shutil.rmtree(out_root, ignore_errors=True)
-    out_root.mkdir(parents=True)
+    out_root.mkdir(parents=True, exist_ok=True)
+    wave_dir = out_root / wave_name
+    shutil.rmtree(wave_dir, ignore_errors=True)
+    wave_dir.mkdir(parents=True)
 
     G.update(
         tokenizer=tokenizer,
         data_dir=str(base / 'neucodec'),
         languages=set(languages),
-        out_root=str(out_root),
+        out_root=str(wave_dir),
     )
 
-    tasks = list(enumerate(snake_chunks(files, workers)))
+    tasks = list(enumerate(snake_chunks(wave_files, workers)))
     t0 = time.time()
     with get_context('fork').Pool(len(tasks)) as pool:
         results = pool.map(pack_worker, tasks)
     G.clear()
 
     totals = {k: sum(r[k] for r in results) for k in results[0]}
-    merge_index(out_root)
+    merge_index(wave_dir)
 
-    packed = StreamingDataset(local=str(out_root))
+    packed = StreamingDataset(local=str(wave_dir))
     n = len(packed)
     log(
-        f'stt: {n} blocks (~{n * BLOCK_SIZE / 1e9:.2f}B tokens) in {time.time() - t0:.0f}s | '
+        f'{wave_name}: {n} blocks (~{n * BLOCK_SIZE / 1e9:.2f}B tokens) in {time.time() - t0:.0f}s | '
         + ' '.join(f'{k}={v}' for k, v in totals.items())
     )
 
     with open(out_root / 'stt_added_tokens.json', 'w') as f:
         json.dump(stt_tokens, f, indent=2)
+    with open(wave_dir / f'summary-{wave_name}.json', 'w') as f:
+        json.dump({'wave': wave_name, 'blocks': n, 'languages': len(languages), **totals}, f, indent=2)
+
+
+def merge_waves(base):
+    """Merge every wave's index into one root index.json (call after all waves)."""
+    from chinidataset import StreamingDataset
+    from chinidataset.util import merge_index
+
+    out_root = base / 'out' / OUT_NAME
+    merge_index(out_root)
+    packed = StreamingDataset(local=str(out_root))
+    n = len(packed)
+    log(f'merged: {n} blocks (~{n * BLOCK_SIZE / 1e9:.2f}B tokens)')
     with open(out_root / 'summary.json', 'w') as f:
-        json.dump({'blocks': n, 'languages': len(languages), **totals}, f, indent=2)
+        json.dump({'blocks': n}, f, indent=2)
 
 
 def upload(base):
@@ -336,21 +377,47 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--base-dir', default='/share/stt')
     parser.add_argument('--subsets', nargs='*', default=None,
-                        help='fnmatch patterns of subset names (default: all 1493)')
+                        help='fnmatch patterns of subset names (default: all)')
+    parser.add_argument('--num-waves', type=int, default=1,
+                        help='split subsets into N disk-bounded waves (JSONs+output of one wave on disk at a time)')
+    parser.add_argument('--wave', type=int, default=0, help='which wave to process (0-based)')
     parser.add_argument('--workers', type=int, default=max(1, (os.cpu_count() or 8) // 2))
-    parser.add_argument('--stage', choices=['download', 'pack', 'upload', 'all'], default='all')
+    parser.add_argument('--stage', choices=['download', 'pack', 'merge', 'upload', 'all'], default='all')
     parser.add_argument('--keep-zips', action='store_true')
     args = parser.parse_args()
 
     base = Path(args.base_dir)
     base.mkdir(parents=True, exist_ok=True)
 
-    if args.stage in ('download', 'all'):
-        download(base, args.subsets, delete_zips=not args.keep_zips)
-    if args.stage in ('pack', 'all'):
-        pack(base, args.subsets, args.workers)
+    if args.stage == 'merge':
+        merge_waves(base)
+        return
     if args.stage == 'upload':
         upload(base)
+        return
+
+    if args.stage in ('download', 'all'):
+        download_meta(base, args.subsets)
+
+    all_files = sorted(
+        (f for f in (base / 'meta').glob('*/*.parquet') if match_subset(f.parent.name, args.subsets)),
+        key=lambda f: (f.parent.name, f.name),
+    )
+    if not all_files:
+        raise SystemExit('no metadata parquets found — run --stage download first')
+
+    subsets_sorted = sorted({f.parent.name for f in all_files})
+    step = -(-len(subsets_sorted) // args.num_waves)
+    wave_subsets = set(subsets_sorted[args.wave * step:(args.wave + 1) * step])
+    wave_files = [f for f in all_files if f.parent.name in wave_subsets]
+    wave_name = f'wave-{args.wave}' if args.num_waves > 1 else 'data'
+    log(f'{len(all_files)} metadata parquets total; {wave_name}: '
+        f'{len(wave_subsets)} subsets / {len(wave_files)} files')
+
+    if args.stage in ('download', 'all'):
+        download_zips(base, wave_files, delete_zips=not args.keep_zips)
+    if args.stage in ('pack', 'all'):
+        pack(base, all_files, wave_files, wave_name, args.workers)
 
 
 if __name__ == '__main__':
