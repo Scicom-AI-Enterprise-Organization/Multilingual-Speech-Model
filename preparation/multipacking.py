@@ -359,7 +359,8 @@ def upload(spec, base):
     api = HfApi()
     api.create_repo(spec.upload_repo, repo_type='dataset', private=True, exist_ok=True)
     log(f'uploading {out_root} -> {spec.upload_repo}')
-    api.upload_large_folder(repo_id=spec.upload_repo, repo_type='dataset', folder_path=str(out_root))
+    # modest worker count — the default (num CPUs) blows the org's 3000 req/5min API quota
+    api.upload_large_folder(repo_id=spec.upload_repo, repo_type='dataset', folder_path=str(out_root), num_workers=16)
 
 
 # ---------------------------------------------------------------- main
