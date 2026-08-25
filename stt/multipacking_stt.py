@@ -82,11 +82,19 @@ def match_subset(subset, patterns):
 # ---------------------------------------------------------------- download
 
 def audio_folder(parquet_file):
-    """Top-level audio folder a subset's rows point into (from the first row)."""
+    """Top-level audio folder a subset's rows point into (from the first row).
+
+    Returns None for subsets without an `audio_filename` column (e.g.
+    Malaysian-TTS-v2 ships `token_filename` and has no zip in the repo) and for
+    empty parquets — their rows are skipped at pack time.
+    """
     import pyarrow.parquet as pq
     pf = pq.ParquetFile(parquet_file)
-    for batch in pf.iter_batches(batch_size=1, columns=['audio_filename']):
-        return str(batch.column(0)[0]).partition('/')[0]
+    if 'audio_filename' not in pf.schema_arrow.names:
+        return None
+    for batch in pf.iter_batches(batch_size=64, columns=['audio_filename']):
+        if batch.num_rows:
+            return str(batch.column(0)[0]).partition('/')[0]
     return None
 
 
@@ -124,20 +132,27 @@ def download_zips(base, meta_files, delete_zips=True):
     if not todo:
         return
 
-    zips = []
-    for f in todo:
-        for attempt in range(5):
-            try:
-                zips.append(hf_hub_download(TOKENS_REPO, f, repo_type='dataset', local_dir=zips_dir))
-                break
-            except Exception as e:
-                if attempt == 4:
-                    raise
-                log(f'download of {f} failed ({e}); retrying')
-                time.sleep(30)
+    # download+extract per zip in parallel — hundreds of zips sequentially is the
+    # bottleneck, and overlapping the two stages keeps both the pipe and disk busy
+    tasks = [(f, str(zips_dir), str(data_dir), str(marker_dir), delete_zips) for f in todo]
+    with get_context('fork').Pool(min(8, len(tasks))) as pool:
+        pool.map(_fetch_extract_one, tasks, chunksize=1)
 
-    with get_context('fork').Pool(min(8, len(zips))) as pool:
-        pool.map(_extract_one, [(z, str(data_dir), str(marker_dir), delete_zips) for z in zips])
+
+def _fetch_extract_one(args):
+    f, zips_dir, data_dir, marker_dir, delete = args
+    from huggingface_hub import hf_hub_download
+
+    for attempt in range(5):
+        try:
+            z = hf_hub_download(TOKENS_REPO, f, repo_type='dataset', local_dir=zips_dir)
+            break
+        except Exception as e:
+            if attempt == 4:
+                raise
+            log(f'download of {f} failed ({e}); retrying')
+            time.sleep(30)
+    _extract_one((z, data_dir, marker_dir, delete))
 
 
 def _extract_one(args):
@@ -236,6 +251,9 @@ def pack_worker(args):
     with ParquetWriter(out=out_dir, columns=COLUMNS, compression=None, hashes=HASHES) as writer:
         for f in files:
             df = pd.read_parquet(f)
+            if 'audio_filename' not in df.columns:
+                stats['missing'] += len(df)
+                continue
             has_norm = 'post-normalized' in df.columns
             audio_col = df['audio_filename'].tolist()
             lang_col = df['language'].tolist() if 'language' in df.columns else [None] * len(df)
