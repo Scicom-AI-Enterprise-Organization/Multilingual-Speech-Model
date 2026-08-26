@@ -387,10 +387,30 @@ def upload(base):
 
     out_root = base / 'out' / OUT_NAME
     api = HfApi()
-    api.create_repo(UPLOAD_REPO, repo_type='dataset', private=True, exist_ok=True)
+    # every hub call here can 429 when the org's 3000 req/5min quota is drained —
+    # absorb exhausted windows instead of dying (upload_large_folder resumes from
+    # its .cache tracking on retry)
+    for attempt in range(10):
+        try:
+            api.create_repo(UPLOAD_REPO, repo_type='dataset', private=True, exist_ok=True)
+            break
+        except Exception as e:
+            if attempt == 9:
+                raise
+            log(f'create_repo rate-limited ({e}); waiting 120s')
+            time.sleep(120)
     log(f'uploading {out_root} -> {UPLOAD_REPO}')
-    # 6 workers: 16 already tripped the org's 3000 req/5min quota into 429 backoff storms
-    api.upload_large_folder(repo_id=UPLOAD_REPO, repo_type='dataset', folder_path=str(out_root), num_workers=6)
+    # 6 workers: 16 already tripped the quota into 429 backoff storms
+    for attempt in range(5):
+        try:
+            api.upload_large_folder(repo_id=UPLOAD_REPO, repo_type='dataset',
+                                    folder_path=str(out_root), num_workers=6)
+            return
+        except Exception as e:
+            if attempt == 4:
+                raise
+            log(f'upload_large_folder failed ({e}); resuming in 300s')
+            time.sleep(300)
 
 
 # ---------------------------------------------------------------- main
