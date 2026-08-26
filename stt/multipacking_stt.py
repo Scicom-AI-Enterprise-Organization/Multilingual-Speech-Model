@@ -248,7 +248,10 @@ def pack_worker(args):
     stats = {'blocks': 0, 'docs': 0, 'no_lang': 0, 'empty_text': 0, 'missing': 0, 'ratio': 0}
     docs = []
     count = 0
-    with ParquetWriter(out=out_dir, columns=COLUMNS, compression=None, hashes=HASHES) as writer:
+    # 256MB shards (default 64MB): fewer files per wave keeps upload_large_folder's
+    # API calls under the org's 3000 req/5min quota
+    with ParquetWriter(out=out_dir, columns=COLUMNS, compression=None, hashes=HASHES,
+                       size_limit=256 * 1024 * 1024) as writer:
         for f in files:
             df = pd.read_parquet(f)
             if 'audio_filename' not in df.columns:
