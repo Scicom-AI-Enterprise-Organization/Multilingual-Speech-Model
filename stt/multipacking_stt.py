@@ -386,7 +386,8 @@ def upload(base):
     api = HfApi()
     api.create_repo(UPLOAD_REPO, repo_type='dataset', private=True, exist_ok=True)
     log(f'uploading {out_root} -> {UPLOAD_REPO}')
-    api.upload_large_folder(repo_id=UPLOAD_REPO, repo_type='dataset', folder_path=str(out_root), num_workers=16)
+    # 6 workers: 16 already tripped the org's 3000 req/5min quota into 429 backoff storms
+    api.upload_large_folder(repo_id=UPLOAD_REPO, repo_type='dataset', folder_path=str(out_root), num_workers=6)
 
 
 # ---------------------------------------------------------------- main
