@@ -218,6 +218,16 @@ class SearchArguments:
         default=243, metadata={"help": "WSD scheduler decay steps."})
     min_lr_ratio: float = field(
         default=0.1, metadata={"help": "WSD scheduler final LR ratio."})
+    added_tokens_file: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": (
+                "JSON list of extra tokens to append AFTER the 65,537 speech tokens, in order "
+                "(e.g. the <|STT|> + language tokens written by the STT multipacking). Must be "
+                "the same file the data was packed with, or token ids will not line up."
+            )
+        },
+    )
 
 
 class Model(Qwen3ForCausalLM):
@@ -494,6 +504,11 @@ def main():
     for i in range(65536):
         extra.append(AddedToken(f'<|s_{i}|>'))
     tokenizer.add_tokens(extra)
+    if search_args.added_tokens_file:
+        with open(search_args.added_tokens_file) as f:
+            added_tokens = json.load(f)
+        tokenizer.add_tokens([AddedToken(t) for t in added_tokens])
+        logger.info(f'appended {len(added_tokens)} tokens from {search_args.added_tokens_file}')
 
     torch_dtype = (
         model_args.torch_dtype

@@ -82,6 +82,42 @@ Run it on a big-CPU box — tokenizing with 65k added tokens is slow, so it scal
 cores (the reference runs used 64–96 workers). Set `HF_HOME` somewhere with space; the
 script sets `HF_HUB_DISABLE_XET=1` itself.
 
+## FLEURS-R TTS/STT ablation packs — `multipacking_fleurs.py`
+
+Builds the two packs the optimizer ablation compares (README "Optimizer search") from
+[malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
+— FLEURS-R metadata plus precomputed NeuCodec tokens for 102 locales, small enough
+(~640MB of token zips) to re-pack in minutes.
+
+One pass over the tokens writes both directions of the task, so the two sweeps differ
+only in what the model has to predict:
+
+| pack | document | blocks | tokens |
+|---|---|---|---|
+| `out/fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{speech tokens}<\|im_end\|>` | 18,047 | ~177M |
+| `out/fleurs-stt` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | ~176M |
+
+From the 2026-09-13 run: 248,117 documents over 102 locales (train split), 0 missing
+token files, 1 row dropped on `len(text.split()) > len(speech_tokens)`.
+
+- The speaker slot takes the repo's `speaker` column — the TitaNet voice clusters added by
+  [../fleurs-dataset](../fleurs-dataset) — falling back to the locale when absent. The
+  locale is also the STT language tag: it is ground truth, so unlike [../stt](../stt) no
+  GlotLID pass is needed. **The 2026-09-13 packs above predate the speaker column and carry
+  `{locale}: `**; re-packing changes the TTS side only.
+- Text is `normalized_text` (falling back to `sentence`) on both sides.
+- `<\|STT\|>` + one token per locale are appended **after** the 65,537 speech tokens and
+  listed in `out/fleurs_stt_added_tokens.json`; the trainer takes the same file via
+  `--added_tokens_file` so ids line up. TTS blocks never use those ids.
+- Block format, greedy packing and attention isolation are identical to
+  `multipacking.py` above.
+
+```bash
+python multipacking_fleurs.py --base-dir /share/multilingual-tts/fleurs --workers 96
+python multipacking_fleurs.py --stage download          # zips + metadata only
+python multipacking_fleurs.py --task stt --locales 'en_us' 'ms_my'
+```
+
 ## TTS / expressive multipacking (still notebooks)
 
 - `multipacking-tts.ipynb`, `combine-multipacking-tts.ipynb` — single-utterance TTS

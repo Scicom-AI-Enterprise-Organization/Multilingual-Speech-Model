@@ -18,6 +18,7 @@ import argparse
 import json
 import statistics
 import subprocess
+import sys
 from pathlib import Path
 
 # Per-optimizer grids. lr = AdamW side (and everything for full-model optimizers),
@@ -50,10 +51,10 @@ COMMAND = """
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 WANDB_PROJECT="{wandb_project}" \
 WANDB_NAME="{run_name}" \
-torchrun --nproc_per_node {nproc} \
+{python} -m torch.distributed.run --nproc_per_node {nproc} \
 -m qwen3_optimizer_search \
 --model_name_or_path "{model}" \
---optimizer {optimizer} {matrix_lr_arg} \
+--optimizer {optimizer} {matrix_lr_arg} {added_tokens_arg} \
 --learning_rate {lr} \
 --weight_decay {wd} \
 --num_decay_steps {num_decay_steps} \
@@ -66,8 +67,7 @@ torchrun --nproc_per_node {nproc} \
 --logging_steps 1 \
 --warmup_steps {warmup} \
 --block_size 10240 \
---save_steps 500 \
---save_total_limit 10 \
+--save_strategy no \
 --gradient_checkpointing true \
 --torch_dtype float32 \
 --ddp_find_unused_parameters false \
@@ -106,6 +106,11 @@ def main():
     parser.add_argument('--nproc', type=int, default=8)
     parser.add_argument('--batch-size', type=int, default=8)
     parser.add_argument('--grad-accum', type=int, default=32)
+    parser.add_argument('--added-tokens-file',
+                        help='JSON list of tokens appended after the speech tokens '
+                             '(STT packs; must match the file the data was packed with)')
+    parser.add_argument('--run-prefix', default='search',
+                        help='run-name prefix, so sweeps over different datasets do not collide')
     parser.add_argument('--output-root', default='gfs/01be5b33/optimizer-search')
     parser.add_argument('--state-dir', default='search_state', help='per-run done markers + results')
     parser.add_argument('--wandb-project', default='Multilingual-TTS')
@@ -124,7 +129,7 @@ def main():
         parser.error(f'no grid for: {", ".join(sorted(unknown))}')
 
     state_dir = Path(args.state_dir)
-    state_dir.mkdir(exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
 
     runs = []
     for opt in args.optimizers:
@@ -134,14 +139,20 @@ def main():
             if matrix_lr is not None:
                 parts.append(f"mlr{matrix_lr}")
             parts.append(f"wd{cfg['wd']}")
-            run_name = 'search-' + '-'.join(parts)
+            run_name = f'{args.run_prefix}-' + '-'.join(parts)
             cmd = COMMAND.format(
+                # launch with the interpreter running the harness, so a venv that
+                # inherits torch from system site-packages (no venv/bin/torchrun)
+                # still launches the right python
+                python=sys.executable,
                 wandb_project=args.wandb_project,
                 run_name=run_name,
                 nproc=args.nproc,
                 model=args.model,
                 optimizer=opt,
                 matrix_lr_arg=f'--matrix_lr {matrix_lr}' if matrix_lr is not None else '',
+                added_tokens_arg=(f'--added_tokens_file {args.added_tokens_file}'
+                                  if args.added_tokens_file else ''),
                 lr=cfg['lr'],
                 wd=cfg['wd'],
                 num_decay_steps=args.num_decay_steps,

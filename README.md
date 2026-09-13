@@ -167,6 +167,40 @@ python hyperparameter_search.py --train-file <multipacking dir> --dry-run   # pr
 The train file must be a ChiniDataset multipacking directory (see
 [preparation](preparation)); custom grids go in `--grid-json`.
 
+##### FLEURS-R — TTS vs STT speech-token task
+
+The same sweep run over both directions of the speech-token task, on a corpus small
+enough to sweep end to end:
+[malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
+(FLEURS-R, 102 locales, precomputed NeuCodec tokens). Both packs come out of one pass
+over the same 248,117 utterances
+([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py)), so the two
+sweeps differ only in what the model predicts:
+
+| pack | document | blocks | tokens |
+|---|---|---|---|
+| `fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{speech tokens}<\|im_end\|>` | 18,047 | ~177M |
+| `fleurs-stt` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | ~176M |
+
+The `speaker` tag is the TitaNet voice cluster the dataset now carries
+([fleurs-dataset](fleurs-dataset)); the packs these numbers come from were built the day
+before that column existed and used the locale in that slot, so re-packing changes the TTS
+side and needs a re-run to stay comparable.
+
+```bash
+python preparation/multipacking_fleurs.py --base-dir <base> --workers 96   # both packs
+bash ablation-fleurs-tts.sh      # 16 runs
+bash ablation-fleurs-stt.sh      # 16 runs, + <|STT|> and 102 locale tokens
+```
+
+Protocol is the search above (Qwen3-1.7B-Base, 100 steps, warmup 50, FP32-BF16, WSD LR,
+ranked by mean train loss over the last 10 steps) with one deviation: the global token
+size is 48 × 10,240 = 491k tokens/step instead of 21M, because 21M/step would replay
+this corpus 12× inside a single run. Each run therefore covers ~27% of one epoch
+(~30 min on 8×H20). LR grids are unchanged, so they sit high for a batch this small —
+read the comparison within a sweep, not against the 21M-token numbers above.
+
+
 ## Training
 
 ### Base

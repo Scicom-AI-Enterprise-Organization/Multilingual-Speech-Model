@@ -27,3 +27,4 @@ tts-evaluation/*-cer
 nonverbal-tagging-pilot
 .DS_Store
 scicom
+claude-ping.json
