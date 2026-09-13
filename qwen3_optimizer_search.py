@@ -188,12 +188,16 @@ class DataTrainingArguments:
     """
 
     train_file: Optional[str] = field(
-        default=None, metadata={
-            "help": "The input training data file (a text file)."})
+        default=None,
+        metadata={"help": "Packed dataset, or a mixture of them: 'dirA,dirB:2.0' trains on dirA "
+                          "at its natural size and dirB twice over. One run of the ablation "
+                          "mixes the TTS-token, STT-token and STT-mel packs."})
     validation_file: Optional[str] = field(
         default=None,
-        metadata={"help": "Packed dataset to validate on — the dev-split pack. Runs are ranked "
-                          "on this when it is set."})
+        metadata={"help": "Dev pack to validate on, or several named ones: "
+                          "'tts=dirA,stt=dirB,mel=dirC' reports eval_tts_loss, eval_stt_loss and "
+                          "eval_mel_loss separately — the mixture trains as one model but each "
+                          "task is scored on its own dev split."})
     max_eval_blocks: int = field(
         default=256,
         metadata={"help": "Evaluate on an evenly-strided subset of --validation_file this many "
@@ -653,19 +657,58 @@ def main():
         print(f'mel_projector.fc1: std={float(fc1.std()):.5f} requires_grad={fc1.requires_grad}')
     print(model)
 
-    dataset = DatasetFixed(data_args.train_file)
+    class MixedDataset(torch.utils.data.Dataset):
+        """Several packs drawn as one training set; the index map copies nothing."""
+
+        def __init__(self, specs):
+            from mel_audio import mixture_index
+
+            self.datasets = [DatasetFixed(path) for path, _ in specs]
+            self.index = mixture_index([len(d) for d in self.datasets],
+                                       [w for _, w in specs])
+            for (path, weight), d in zip(specs, self.datasets):
+                print(f'  mixing {len(d)} blocks x{weight} from {path}')
+
+        def __getitem__(self, idx):
+            source, row = self.index[idx]
+            return self.datasets[int(source)][int(row)]
+
+        def __len__(self):
+            return len(self.index)
+
+    if ',' in data_args.train_file:
+        from mel_audio import parse_train_files
+
+        dataset = MixedDataset(parse_train_files(data_args.train_file))
+    else:
+        dataset = DatasetFixed(data_args.train_file)
     print('dataset', len(dataset), dataset[0]['attention_mask'].shape)
+
+    def capped(path):
+        """A dev pack, cut to --max_eval_blocks by striding rather than truncating.
+
+        Packs are written worker by worker, so the first N blocks are one slice of the
+        corpus rather than a sample of it.
+        """
+        ds = DatasetFixed(path)
+        total = len(ds)
+        cap = data_args.max_eval_blocks
+        if cap and total > cap:
+            ds.indices = np.linspace(0, total, cap, endpoint=False).astype(np.int64)
+        return ds, total
 
     eval_dataset = None
     if data_args.validation_file:
-        eval_dataset = DatasetFixed(data_args.validation_file)
-        total = len(eval_dataset)
-        cap = data_args.max_eval_blocks
-        if cap and total > cap:
-            # strided, not a prefix: packs are written worker by worker, so the first N
-            # blocks are one slice of the corpus rather than a sample of it
-            eval_dataset.indices = np.linspace(0, total, cap, endpoint=False).astype(np.int64)
-        print('eval dataset', len(eval_dataset), f'of {total} blocks')
+        named = [part.split('=', 1) for part in data_args.validation_file.split(',') if part.strip()]
+        if all(len(part) == 2 for part in named) and len(named):
+            eval_dataset = {}
+            for name, path in named:
+                eval_dataset[name.strip()], total = capped(path.strip())
+                print(f'eval dataset [{name.strip()}]', len(eval_dataset[name.strip()]),
+                      f'of {total} blocks')
+        else:
+            eval_dataset, total = capped(data_args.validation_file)
+            print('eval dataset', len(eval_dataset), f'of {total} blocks')
 
     def collator(batch):
         batch = [b for b in batch if b is not None]

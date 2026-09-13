@@ -92,11 +92,21 @@ def parse_result(output_dir):
         'min_loss': min(losses),
         'steps_logged': len(losses),
     }
-    evals = [h['eval_loss'] for h in history if 'eval_loss' in h]
-    if evals:
-        result['final_eval_loss'] = evals[-1]
-        result['min_eval_loss'] = min(evals)
-        result['evals_logged'] = len(evals)
+    # a mixed run reports one dev loss per task (eval_tts_loss, eval_stt_loss, …); a
+    # single dev set reports plain eval_loss
+    curves = {}
+    for entry in history:
+        for k, v in entry.items():
+            if k.startswith('eval_') and k.endswith('_loss'):
+                curves.setdefault(k[len('eval_'):-len('_loss')] or 'dev', []).append(v)
+    if curves:
+        result['dev'] = {name: {'final': vals[-1], 'min': min(vals), 'points': len(vals)}
+                         for name, vals in sorted(curves.items())}
+        # the ranking scalar: the mean across tasks, so no single task's scale decides the
+        # order on its own (speech-token loss runs several nats above text loss)
+        result['final_eval_loss'] = statistics.mean(v['final'] for v in result['dev'].values())
+        result['min_eval_loss'] = statistics.mean(v['min'] for v in result['dev'].values())
+        result['eval_tasks'] = sorted(curves)
     return result
 
 
@@ -233,12 +243,19 @@ def main():
     ok = sorted(ok, key=lambda r: r[key])
     failed = [r for r in results.values() if r.get('status') == 'failed']
 
-    print(f"\n=== ranked by {'dev loss' if on_eval else 'mean train loss over last 10 steps'} ===")
+    tasks = sorted({t for r in ok for t in r.get('eval_tasks', [])})
+    if on_eval and len(tasks) > 1:
+        print(f"\n=== ranked by mean dev loss over {', '.join(tasks)} ===")
+    else:
+        print(f"\n=== ranked by {'dev loss' if on_eval else 'mean train loss over last 10 steps'} ===")
     for rank, r in enumerate(ok, 1):
         line = f"{rank:2d}. {r['run']}: "
         if on_eval:
-            line += f"dev={r['final_eval_loss']:.4f} (best {r['min_eval_loss']:.4f}) "
-        print(line + f"train_last10={r['last10_mean_loss']:.4f} final={r['final_loss']:.4f}")
+            line += f"dev={r['final_eval_loss']:.4f} "
+            if len(tasks) > 1:
+                line += '(' + ' '.join(f"{t}={r['dev'][t]['final']:.4f}" for t in tasks
+                                       if t in r.get('dev', {})) + ') '
+        print(line + f"train_last10={r['last10_mean_loss']:.4f}")
     for r in failed:
         print(f" X. {r['run']}: FAILED (exit {r['returncode']})")
 

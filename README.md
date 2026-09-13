@@ -44,6 +44,28 @@ Speaker similarity and CER across 76 languages, compared against: Dia TTS, Orphe
 
 > Chatterbox covers 23 languages only; its averages are not directly comparable to 76-language models.
 
+### [Low-Resource Language Test Set](low-language-testset/README.md)
+
+A held-out test set for the **long tail** of the training corpus: the 50 lowest-resource
+languages of [malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS),
+25 utterances each — 1,250 rows, 2.56 hours, 514 speakers, published as
+[malaysia-ai/Low-Language-TTS](https://huggingface.co/datasets/malaysia-ai/Low-Language-TTS).
+
+Every row carries **audio + NeuCodec tokens + normalized transcription**, so it scores both
+directions: TTS/VC (generate from the text, CER against it) and STT (tokens in, text out).
+Coverage runs from Wayuu (1,128 rows in the whole corpus) to Kasem (61,277), taking in
+Naga varieties, Quichua, Gronings, Baoulé, Karamojong, Iban, Meitei, Tamazight, Lule Sami,
+Ladino, Khasi, Hawrami, Kokborok, Kabardian, Vagla and Swiss German along the way.
+
+Languages are **not** picked by taking the rarest GlotLID labels — measured on this corpus,
+only 3 of the 500 rarest labels survive verification, because that tail is the detector
+firing on short lines of other languages. A language qualifies when some subset was
+*collected for it* (≥ 50 rows and ≥ 40% of that subset), and each row is then verified
+individually: ≥ 40 chars and ≥ 5 words, GlotLID v3 reproducing the stored label at
+probability ≥ 0.90 and margin ≥ 0.50, and the decoded audio length matching `len(tokens) / 50`.
+
+**Preparation:** [low-language-testset](low-language-testset)
+
 ## Dataset
 
 ### Base
@@ -106,6 +128,26 @@ Higgs-TTS style (`<|sfx:laughter|>Haha`) and Emilia-NV style (`[Laughter]`).
 
 **Preparation:** [nonverbal-tagging](nonverbal-tagging)
 
+### Speech-to-Text
+
+The inverse task, so one model both speaks and listens. Two packs of the same task, one
+per audio representation:
+
+| pack | document | audio as |
+|---|---|---|
+| `multipacking_stt.py` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{lang}\|>{text}<\|im_end\|>` | NeuCodec `<\|s_N\|>` tokens, 50 tokens/s |
+| `multipacking_stt_mel.py` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{lang}\|>{text}<\|im_end\|>` | raw whisper log-mel, 50 positions/s |
+
+Both run at 50 positions/s, so the same audio costs the same context either way and the
+codec's information loss is the only thing that differs between them.
+
+**Sources**
+
+1. https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS-language — 118M rows,
+   1493 subsets, with GlotLID v3 `language` and rule-normalized `post-normalized` columns
+
+**Preparation:** [stt](stt)
+
 ## Ablation
 
 ### One Epoch
@@ -167,47 +209,50 @@ python hyperparameter_search.py --train-file <multipacking dir> --dry-run   # pr
 The train file must be a ChiniDataset multipacking directory (see
 [preparation](preparation)); custom grids go in `--grid-json`.
 
-##### FLEURS-R — three audio-tokenizer arms, scored on a held-out dev split
+##### FLEURS-R — one mixture, three audio tokenizers, scored per task
 
-The same sweep run over three ways of pairing audio with text, on a corpus small enough
-to sweep end to end:
-[malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
-(FLEURS-R, 102 locales). All three packs come out of one pass over the same utterances
-([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py)), so an arm
-differs only in what the model reads and predicts:
+The sweep the project actually needs: every run trains on **all three ways of pairing
+audio with text at once**, because the model being built has to do all three. The corpus
+is [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
+(FLEURS-R, 102 locales), and all three packs come out of one pass over the same
+utterances ([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py)) —
+the same 248,117 train / 31,378 dev documents in all three, so only the audio
+representation and the direction change:
 
-| arm | document | train blocks | dev blocks |
+| pack | document | train blocks | dev blocks |
 |---|---|---|---|
-| TTS audio tokens | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{NeuCodec tokens}<\|im_end\|>` | 18,047 | 2,237 |
-| STT audio tokens | `<\|im_start\|><\|STT\|>{NeuCodec tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | 2,213 |
-| STT raw mel | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | — | — |
+| `fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{NeuCodec tokens}<\|im_end\|>` | 18,047 | 2,237 |
+| `fleurs-stt` | `<\|im_start\|><\|STT\|>{NeuCodec tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | 2,213 |
+| `fleurs-mel` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | 18,033 | 2,219 |
 
-Both audio representations run at 50 positions/s, so the same utterance costs the same
-context whether it arrives as codec tokens or as raw log-mel ([mel_audio.py](mel_audio.py))
-— the codec's information loss is the only thing that differs between arms 2 and 3.
+Both audio representations run at 50 positions/s, so an utterance costs the same context
+whether it arrives as codec tokens or as raw whisper log-mel
+([mel_audio.py](mel_audio.py)) — the codec's information loss is the only difference
+between the second and third pack.
 
 ```bash
 python preparation/multipacking_fleurs.py --base-dir <base> --task token --workers 96
 python preparation/multipacking_fleurs.py --base-dir <base> --splits dev --task token
+python preparation/multipacking_fleurs.py --base-dir <base> --stage audio --audio-base <audio>
 python preparation/multipacking_fleurs.py --base-dir <base> --task mel --audio-base <audio>
+python preparation/multipacking_fleurs.py --base-dir <base> --splits dev --task mel --audio-base <audio>
 
-bash ablation-fleurs-tts.sh        # 16 runs
-bash ablation-fleurs-stt.sh        # 16 runs
-bash ablation-fleurs-stt-mel.sh    # 16 runs
-python plot_fleurs_ablation.py     # one figure per arm
+bash ablation-fleurs.sh            # 16 runs over the mixture
+python plot_fleurs_ablation.py     # one figure per task
 ```
 
-Each run **trains on the train split and is ranked on the dev split** (evaluated every
-25 steps on a 256-block slice), so the sweep measures what an optimizer generalises to
-rather than how fast it fits 100 steps. Dev loss is only comparable *within* an arm —
-the TTS arm predicts 65k-way speech tokens while both STT arms predict text — which is
-why [plot_fleurs_ablation.py](plot_fleurs_ablation.py) draws one figure per arm.
+Each run trains on the mixture and is then scored on **each task's own dev split**,
+reported separately as `eval_tts_loss`, `eval_stt_loss` and `eval_mel_loss` (every 25
+steps, over a 256-block strided slice). Those three never share an axis — the TTS task
+predicts 65k-way speech tokens while both STT tasks predict text — so
+[plot_fleurs_ablation.py](plot_fleurs_ablation.py) draws one figure per task, and runs
+are ranked on the *mean* of the three so no single task's scale decides the order.
 
 Protocol is otherwise the search above (Qwen3-1.7B-Base, 100 steps, warmup 50, FP32-BF16,
 WSD LR) with one deviation: the global token size is 48 × 10,240 = 491k tokens/step
-instead of 21M, because 21M/step would replay this corpus 12× inside a single run. Each
-run covers ~27% of one epoch. LR grids are unchanged, so they sit high for a batch this
-small — read the comparison within a sweep, not against the 21M-token numbers above.
+instead of 21M, because 21M/step would replay this corpus many times inside a single run.
+LR grids are unchanged, so they sit high for a batch this small — read the comparison
+within this sweep, not against the 21M-token numbers above.
 
 ## Training
 
@@ -230,6 +275,69 @@ bash 0.6B-expressive.sh
 # 1.7B
 bash 1.7B-expressive.sh
 ```
+
+### TTS + STT + raw mel
+
+One run over all three tasks — TTS from audio tokens, STT from audio tokens, and STT
+from raw mel:
+
+```bash
+# 0.6B
+bash 0.6B-mel.sh
+
+# 1.7B
+bash 1.7B-mel.sh
+```
+
+The mix is a launch flag, not a property of the data — `--train_file` takes
+`dir:weight` entries where the weight is how many epochs of that pack go into one
+training epoch, so ratios change without repacking anything. The raw-mel pack stores
+audio *paths*, so `--audio_dir` must point at the extracted audio tree; the dataset reads
+and resamples the files in the dataloader workers and the STFT runs on the GPU.
+
+To smoke-test the whole thing without any real data — synthetic packs for all three
+tasks, built with the real tokenizer so every id is the id training would see:
+
+```bash
+python dryrun_pack.py --out /share/mel-dryrun
+torchrun --nproc_per_node 2 -m qwen3_mel_adamw \
+  --model_name_or_path Qwen/Qwen3-0.6B-Base \
+  --stt_tokens_file /share/mel-dryrun/stt_added_tokens.json \
+  --audio_dir /share/mel-dryrun/audio \
+  --train_file "/share/mel-dryrun/multipacking-tts:1.0,/share/mel-dryrun/multipacking-stt:1.0,/share/mel-dryrun/multipacking-stt-mel:0.3" \
+  --block_size 10240 --max_steps 20 --do_train --bf16 --torch_dtype float32 \
+  --per_device_train_batch_size 2 --gradient_checkpointing true \
+  --ddp_find_unused_parameters false --remove_unused_columns false \
+  --output_dir /share/mel-dryrun/out --logging_steps 1 --save_strategy no
+```
+
+Weighting the mel pack down is deliberate: it makes micro-batches that contain no mel
+document common, which is the case that hangs DDP if the projector ever leaves the
+autograd graph.
+
+**Raw mel input.** Audio reaches the LLM without a speech tokenizer and without a
+whisper *encoder* — only whisper's mel front end survives, and the LLM does the acoustic
+modelling itself:
+
+```
+waveform 16kHz
+  └─ whisper log-mel            100 fps, 128 bins   (feature extractor unchanged)
+      └─ stack 2 frames         [T/2, 256]
+          └─ LayerNorm → Linear(256→H) → GELU → Linear(H→H)
+              └─ 50 positions/s, written over the <|mel|> placeholder embeddings
+```
+
+Stacking rather than pooling is the point: a reshape of 2 frames is information
+preserving and is exactly `Conv1d(128, H, kernel_size=2, stride=2)`, while an average
+pool pre-commits to one fixed mixing and low-passes away the ~10ms cues (plosive bursts,
+stop closures, onset edges) that separate phonemes. Qwen2-Audio can afford to pool
+because its stride-2 pool sits *after* 32 transformer layers that already made
+neighbouring positions redundant; with no encoder, adjacent mel frames are not
+redundant. 50 positions/s is also whisper's own encoder output rate, and the NeuCodec
+rate.
+
+Implementation: [mel_audio.py](mel_audio.py) and [qwen3_mel_adamw.py](qwen3_mel_adamw.py),
+tests in [stt/test_mel_pipeline.py](stt/test_mel_pipeline.py).
 
 ## WandB
 

@@ -1,28 +1,28 @@
-"""Plot the FLEURS optimizer ablation — one figure per arm.
+"""Plot the FLEURS optimizer ablation — one figure per task.
 
-Each arm is a different prediction target, so their losses share no axis: the TTS arm
-predicts NeuCodec speech tokens (~65k-way), both STT arms predict text. Putting them on
-one chart would rank corpora, not optimizers, so every arm gets its own figure.
+Every run trains on one mixture (TTS audio tokens + STT audio tokens + STT raw mel) and
+is scored on each task's own dev split. Those three losses share no axis — the TTS task
+predicts 65k-way speech tokens while both STT tasks predict text — so each gets its own
+figure rather than three lines on one chart.
 
-    python plot_fleurs_ablation.py                       # all arms found under --state-root
-    python plot_fleurs_ablation.py --arms fleurs-stt-mel
+    python plot_fleurs_ablation.py                    # every task found in the sweep
+    python plot_fleurs_ablation.py --tasks mel
     python plot_fleurs_ablation.py --out-dir docs/
 
-Reads each run's `trainer_state.json` for the dev-loss curve and the sweep's
-`summary.json` for the ranking, and writes `<arm>.png` plus a markdown table per arm.
+Writes `fleurs-ablation-<task>.png` per task plus `fleurs-ablation.md` with the ranking.
 """
 
 import argparse
 import json
 from pathlib import Path
 
-ARMS = {
-    'fleurs-tts': 'TTS — text → NeuCodec speech tokens',
-    'fleurs-stt': 'STT — NeuCodec speech tokens → text',
-    'fleurs-stt-mel': 'STT — whisper log-mel → text',
+TASKS = {
+    'tts': 'TTS — text → NeuCodec speech tokens',
+    'stt': 'STT — NeuCodec speech tokens → text',
+    'mel': 'STT — whisper log-mel → text',
 }
 
-# one colour per optimizer family, so the LR variants of an optimizer read as a group
+# one colour per optimizer family, so an optimizer's LR variants read as a group
 COLORS = {
     'adamw': '#4C72B0',
     'muon': '#DD8452',
@@ -33,12 +33,8 @@ COLORS = {
 }
 
 
-def optimizer_of(run, arm):
-    return run[len(arm) + 1:].split('-')[0]
-
-
-def load_runs(state_dir, runs_dir, arm):
-    """(run name, [(step, dev loss)], final dev loss) for every finished run."""
+def load_runs(state_dir, runs_dir, prefix):
+    """Finished runs with their per-task dev curves."""
     runs = []
     for marker in sorted(state_dir.glob('*.json')):
         if marker.name == 'summary.json':
@@ -46,70 +42,78 @@ def load_runs(state_dir, runs_dir, arm):
         record = json.loads(marker.read_text())
         if record.get('status') != 'ok':
             continue
+        curves = {}
         state_file = runs_dir / record['run'] / 'trainer_state.json'
-        curve, train = [], []
         if state_file.exists():
-            history = json.loads(state_file.read_text()).get('log_history', [])
-            curve = [(h['step'], h['eval_loss']) for h in history if 'eval_loss' in h]
-            train = [(h['step'], h['loss']) for h in history if 'loss' in h]
+            for entry in json.loads(state_file.read_text()).get('log_history', []):
+                for key, value in entry.items():
+                    if key.startswith('eval_') and key.endswith('_loss'):
+                        task = key[len('eval_'):-len('_loss')] or 'dev'
+                        curves.setdefault(task, []).append((entry['step'], value))
+        label = record['run'][len(prefix) + 1:] if record['run'].startswith(prefix) else record['run']
         runs.append({
             'run': record['run'],
-            'label': record['run'][len(arm) + 1:],
-            'optimizer': optimizer_of(record['run'], arm),
-            'curve': curve,
-            'train': train,
-            'final': record.get('final_eval_loss', record.get('last10_mean_loss')),
-            'best': record.get('min_eval_loss'),
+            'label': label,
+            'optimizer': label.split('-')[0],
+            'curves': curves,
+            'dev': record.get('dev', {}),
+            'mean_dev': record.get('final_eval_loss'),
             'last10': record.get('last10_mean_loss'),
-            'is_eval': 'final_eval_loss' in record,
         })
-    return sorted(runs, key=lambda r: r['final'] if r['final'] is not None else float('inf'))
+    return runs
 
 
-def plot_arm(arm, runs, out_dir):
+def plot_task(task, runs, out_dir):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    metric = 'dev loss' if runs and runs[0]['is_eval'] else 'train loss'
+    scored = [r for r in runs if r['dev'].get(task) or r['curves'].get(task)]
+    if not scored:
+        return None
+    scored.sort(key=lambda r: r['dev'].get(task, {}).get('final', float('inf')))
+
     fig, (curves, bars) = plt.subplots(
         1, 2, figsize=(13, 5.2), gridspec_kw={'width_ratios': [1.35, 1]})
 
     seen = set()
-    for i, r in enumerate(runs):
-        colour = COLORS.get(r['optimizer'], '#777777')
-        points = r['curve'] or r['train']
+    for i, r in enumerate(scored):
+        points = r['curves'].get(task)
         if not points:
             continue
         xs, ys = zip(*points)
         best = i == 0
+        colour = COLORS.get(r['optimizer'], '#777777')
         curves.plot(xs, ys, color=colour, linewidth=2.4 if best else 1.2,
-                    alpha=1.0 if best else 0.55, zorder=3 if best else 2,
+                    alpha=1.0 if best else 0.5, zorder=3 if best else 2,
+                    marker='o' if best else None, markersize=3.5,
                     label=r['optimizer'] if r['optimizer'] not in seen else None)
         seen.add(r['optimizer'])
-    if runs and runs[0]['curve']:
-        xs, ys = zip(*runs[0]['curve'])
-        curves.annotate(runs[0]['label'], (xs[-1], ys[-1]), textcoords='offset points',
-                        xytext=(-6, 8), ha='right', fontsize=8, color='#222222')
+    if scored[0]['curves'].get(task):
+        xs, ys = zip(*scored[0]['curves'][task])
+        curves.annotate(scored[0]['label'], (xs[-1], ys[-1]), textcoords='offset points',
+                        xytext=(-8, 8), ha='right', fontsize=8, color='#222222')
     curves.set_xlabel('step')
-    curves.set_ylabel(metric)
-    curves.set_title(f'{ARMS.get(arm, arm)}\n{metric} through the 100-step run', fontsize=10)
+    curves.set_ylabel('dev loss')
+    curves.set_title(f'{TASKS.get(task, task)}\ndev loss, one mixed run per optimizer config',
+                     fontsize=10)
     curves.grid(alpha=0.25, linewidth=0.6)
     curves.legend(fontsize=8, frameon=False, ncol=2)
 
-    top = [r for r in runs if r['final'] is not None][:10][::-1]
-    bars.barh([r['label'] for r in top], [r['final'] for r in top],
-              color=[COLORS.get(r['optimizer'], '#777777') for r in top])
-    lo = min(r['final'] for r in top)
-    hi = max(r['final'] for r in top)
-    bars.set_xlim(lo - 0.05 * (hi - lo + 1e-6), hi + 0.02 * (hi - lo + 1e-6))
-    bars.set_xlabel(f'final {metric}')
-    bars.set_title(f'best {len(top)} configurations', fontsize=10)
+    top = [r for r in scored if task in r['dev']][:10][::-1]
+    if top:
+        values = [r['dev'][task]['final'] for r in top]
+        bars.barh([r['label'] for r in top], values,
+                  color=[COLORS.get(r['optimizer'], '#777777') for r in top])
+        lo, hi = min(values), max(values)
+        bars.set_xlim(lo - 0.05 * (hi - lo + 1e-6), hi + 0.02 * (hi - lo + 1e-6))
+    bars.set_xlabel('final dev loss')
+    bars.set_title(f'best {len(top)} configurations on this task', fontsize=10)
     bars.tick_params(axis='y', labelsize=7)
     bars.grid(axis='x', alpha=0.25, linewidth=0.6)
 
     fig.tight_layout()
-    path = out_dir / f'{arm}.png'
+    path = out_dir / f'fleurs-ablation-{task}.png'
     fig.savefig(path, dpi=150)
     plt.close(fig)
     return path
@@ -119,47 +123,49 @@ def fmt(value):
     return f'{value:.4f}' if isinstance(value, (int, float)) else '—'
 
 
-def table(arm, runs):
-    metric = 'dev loss' if runs and runs[0]['is_eval'] else 'train loss'
-    lines = [f'### {ARMS.get(arm, arm)}', '',
-             f'| rank | run | final {metric} | best {metric} | train last10 |',
-             '|---|---|---|---|---|']
+def table(runs, tasks):
+    runs = sorted(runs, key=lambda r: r['mean_dev'] if r['mean_dev'] is not None else float('inf'))
+    header = '| rank | run | ' + ' | '.join(f'{t} dev' for t in tasks) + ' | mean dev | train last10 |'
+    lines = ['### FLEURS ablation — mixed training, per-task dev loss', '',
+             header, '|---' * (len(tasks) + 4) + '|']
     for i, r in enumerate(runs, 1):
-        lines.append(f"| {i} | `{r['label']}` | {fmt(r['final'])} | "
-                     f"{fmt(r['best'])} | {fmt(r['last10'])} |")
+        cells = ' | '.join(fmt(r['dev'].get(t, {}).get('final')) for t in tasks)
+        lines.append(f"| {i} | `{r['label']}` | {cells} | {fmt(r['mean_dev'])} | {fmt(r['last10'])} |")
     return '\n'.join(lines)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--state-root', default='/share/multilingual-tts/search_state')
-    parser.add_argument('--runs-root', default='/share/multilingual-tts/runs')
-    parser.add_argument('--arms', nargs='+', default=list(ARMS))
+    parser.add_argument('--state-dir', default='/share/multilingual-tts/search_state/fleurs')
+    parser.add_argument('--runs-root', default='/share/multilingual-tts/runs/fleurs')
+    parser.add_argument('--run-prefix', default='fleurs')
+    parser.add_argument('--tasks', nargs='+', default=None, help='default: every task in the sweep')
     parser.add_argument('--out-dir', default='.')
     args = parser.parse_args()
 
+    state_dir = Path(args.state_dir)
+    if not state_dir.is_dir():
+        raise SystemExit(f'no sweep state at {state_dir}')
+    runs = load_runs(state_dir, Path(args.runs_root), args.run_prefix)
+    if not runs:
+        raise SystemExit('no finished runs yet')
+
+    found = {t for r in runs for t in set(r['dev']) | set(r['curves'])}
+    tasks = args.tasks or [t for t in TASKS if t in found] + sorted(found - set(TASKS))
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    sections = []
-    for arm in args.arms:
-        state_dir = Path(args.state_root) / arm
-        if not state_dir.is_dir():
-            print(f'{arm}: no state dir, skipping')
-            continue
-        runs = load_runs(state_dir, Path(args.runs_root) / arm, arm)
-        if not runs:
-            print(f'{arm}: no finished runs yet')
-            continue
-        path = plot_arm(arm, runs, out_dir)
-        metric = 'dev' if runs[0]['is_eval'] else 'train'
-        print(f'{arm}: {len(runs)} runs, best {runs[0]["label"]} '
-              f'({metric} {runs[0]["final"]:.4f}) -> {path}')
-        sections.append((arm, runs))
 
-    if sections:
-        md = out_dir / 'fleurs-ablation.md'
-        md.write_text('\n\n'.join(table(arm, runs) for arm, runs in sections) + '\n')
-        print(f'tables written to {md}')
+    for task in tasks:
+        path = plot_task(task, runs, out_dir)
+        if path:
+            best = min((r for r in runs if task in r['dev']),
+                       key=lambda r: r['dev'][task]['final'], default=None)
+            note = f" | best {best['label']} {best['dev'][task]['final']:.4f}" if best else ''
+            print(f'{task}: {len(runs)} runs -> {path}{note}')
+
+    md = out_dir / 'fleurs-ablation.md'
+    md.write_text(table(runs, tasks) + '\n')
+    print(f'table written to {md}')
 
 
 if __name__ == '__main__':
