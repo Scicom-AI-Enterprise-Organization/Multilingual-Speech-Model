@@ -62,8 +62,8 @@ WANDB_NAME="{run_name}" \
 --per_device_train_batch_size {batch_size} \
 --gradient_accumulation_steps {grad_accum} \
 --output_dir {output_dir} \
---bf16 --do_train --do_eval false --max_steps {steps} \
---train_file "{train_file}" \
+--bf16 --do_train --max_steps {steps} \
+--train_file "{train_file}" {eval_args} {audio_args} \
 --logging_steps 1 \
 --warmup_steps {warmup} \
 --block_size 10240 \
@@ -82,15 +82,22 @@ def parse_result(output_dir):
     state_file = Path(output_dir) / 'trainer_state.json'
     with open(state_file) as f:
         state = json.load(f)
-    losses = [h['loss'] for h in state.get('log_history', []) if 'loss' in h]
+    history = state.get('log_history', [])
+    losses = [h['loss'] for h in history if 'loss' in h]
     if not losses:
         raise ValueError(f'no loss entries in {state_file}')
-    return {
+    result = {
         'final_loss': losses[-1],
         'last10_mean_loss': statistics.mean(losses[-10:]),
         'min_loss': min(losses),
         'steps_logged': len(losses),
     }
+    evals = [h['eval_loss'] for h in history if 'eval_loss' in h]
+    if evals:
+        result['final_eval_loss'] = evals[-1]
+        result['min_eval_loss'] = min(evals)
+        result['evals_logged'] = len(evals)
+    return result
 
 
 def main():
@@ -106,6 +113,15 @@ def main():
     parser.add_argument('--nproc', type=int, default=8)
     parser.add_argument('--batch-size', type=int, default=8)
     parser.add_argument('--grad-accum', type=int, default=32)
+    parser.add_argument('--validation-file',
+                        help='dev-split pack to validate on; runs are then ranked on dev loss')
+    parser.add_argument('--eval-steps', type=int, default=25,
+                        help='evaluate every N steps (and at the end of the run)')
+    parser.add_argument('--max-eval-blocks', type=int, default=256,
+                        help='cap the dev pass at this many evenly-strided blocks')
+    parser.add_argument('--audio-dir',
+                        help='root the pack\'s audio paths resolve against — switches the trainer '
+                             'to the raw log-mel front end (mel packs only)')
     parser.add_argument('--added-tokens-file',
                         help='JSON list of tokens appended after the speech tokens '
                              '(STT packs; must match the file the data was packed with)')
@@ -153,6 +169,13 @@ def main():
                 matrix_lr_arg=f'--matrix_lr {matrix_lr}' if matrix_lr is not None else '',
                 added_tokens_arg=(f'--added_tokens_file {args.added_tokens_file}'
                                   if args.added_tokens_file else ''),
+                eval_args=(
+                    f'--validation_file "{args.validation_file}" --do_eval true '
+                    f'--eval_strategy steps --eval_steps {args.eval_steps} '
+                    f'--per_device_eval_batch_size 1 --prediction_loss_only true '
+                    f'--max_eval_blocks {args.max_eval_blocks}'
+                    if args.validation_file else '--do_eval false'),
+                audio_args=(f'--audio_dir "{args.audio_dir}"' if args.audio_dir else ''),
                 lr=cfg['lr'],
                 wd=cfg['wd'],
                 num_decay_steps=args.num_decay_steps,
@@ -202,21 +225,25 @@ def main():
     if args.dry_run:
         return
 
-    ok = sorted(
-        (r for r in results.values() if r.get('status') == 'ok'),
-        key=lambda r: r['last10_mean_loss'],
-    )
+    ok = [r for r in results.values() if r.get('status') == 'ok']
+    # dev loss is the metric whenever every finished run measured one; train loss alone
+    # would rank an optimizer that memorised the 100 steps above one that generalised
+    on_eval = bool(ok) and all('final_eval_loss' in r for r in ok)
+    key = 'final_eval_loss' if on_eval else 'last10_mean_loss'
+    ok = sorted(ok, key=lambda r: r[key])
     failed = [r for r in results.values() if r.get('status') == 'failed']
 
-    print('\n=== ranked by mean loss over last 10 steps ===')
+    print(f"\n=== ranked by {'dev loss' if on_eval else 'mean train loss over last 10 steps'} ===")
     for rank, r in enumerate(ok, 1):
-        print(f"{rank:2d}. {r['run']}: last10={r['last10_mean_loss']:.4f} "
-              f"final={r['final_loss']:.4f} min={r['min_loss']:.4f}")
+        line = f"{rank:2d}. {r['run']}: "
+        if on_eval:
+            line += f"dev={r['final_eval_loss']:.4f} (best {r['min_eval_loss']:.4f}) "
+        print(line + f"train_last10={r['last10_mean_loss']:.4f} final={r['final_loss']:.4f}")
     for r in failed:
         print(f" X. {r['run']}: FAILED (exit {r['returncode']})")
 
     with open(state_dir / 'summary.json', 'w') as f:
-        json.dump({'ranked': ok, 'failed': failed}, f, indent=2)
+        json.dump({'ranked_by': key, 'ranked': ok, 'failed': failed}, f, indent=2)
     print(f"\nsummary written to {state_dir / 'summary.json'}")
 
 

@@ -92,13 +92,23 @@ Builds the two packs the optimizer ablation compares (README "Optimizer search")
 One pass over the tokens writes both directions of the task, so the two sweeps differ
 only in what the model has to predict:
 
-| pack | document | blocks | tokens |
+| pack | document | train blocks | dev blocks |
 |---|---|---|---|
-| `out/fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{speech tokens}<\|im_end\|>` | 18,047 | ~177M |
-| `out/fleurs-stt` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | ~176M |
+| `out/fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{speech tokens}<\|im_end\|>` | 18,047 | 2,237 |
+| `out/fleurs-stt` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | 2,213 |
+| `out/fleurs-mel` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | — | — |
 
-From the 2026-09-13 run: 248,117 documents over 102 locales (train split), 0 missing
-token files, 1 row dropped on `len(text.split()) > len(speech_tokens)`.
+From the 2026-09-13 run: 248,117 train documents over 102 locales (0 missing token
+files, 1 row dropped on `len(text.split()) > len(speech_tokens)`) and 31,378 dev
+documents (0 missing). `--splits dev` writes `-dev` packs beside the train ones, which
+is what the sweep validates on.
+
+The mel pack is the STT task again with the audio carried as raw whisper log-mel instead
+of codec tokens ([../mel_audio.py](../mel_audio.py)). Both representations run at 50
+positions/s, so an utterance costs the same context either way. Mel blocks store audio
+**paths** plus the 16kHz sample count each `<|mel|>` placeholder budget was derived from
+— run `--stage audio` first to materialise the wavs (~126GB for all 102 locales,
+marker-tracked per zip), and hand the trainer the same root as `--audio_dir`.
 
 - The speaker slot takes the repo's `speaker` column — the TitaNet voice clusters added by
   [../fleurs-dataset](../fleurs-dataset) — falling back to the locale when absent. The
@@ -107,15 +117,18 @@ token files, 1 row dropped on `len(text.split()) > len(speech_tokens)`.
   `{locale}: `**; re-packing changes the TTS side only.
 - Text is `normalized_text` (falling back to `sentence`) on both sides.
 - `<\|STT\|>` + one token per locale are appended **after** the 65,537 speech tokens and
-  listed in `out/fleurs_stt_added_tokens.json`; the trainer takes the same file via
-  `--added_tokens_file` so ids line up. TTS blocks never use those ids.
+  listed in `out/fleurs_stt_added_tokens.json`; the mel tokens go after those again, in
+  `out/fleurs_mel_added_tokens.json`. Each trainer takes the file matching its pack via
+  `--added_tokens_file`, so `<|s_N|>` ids are identical in all three arms.
 - Block format, greedy packing and attention isolation are identical to
   `multipacking.py` above.
 
 ```bash
-python multipacking_fleurs.py --base-dir /share/multilingual-tts/fleurs --workers 96
-python multipacking_fleurs.py --stage download          # zips + metadata only
-python multipacking_fleurs.py --task stt --locales 'en_us' 'ms_my'
+python multipacking_fleurs.py --base-dir <base> --task token --workers 96   # tts + stt
+python multipacking_fleurs.py --base-dir <base> --splits dev --task token   # the dev packs
+python multipacking_fleurs.py --base-dir <base> --stage audio --audio-base <audio>
+python multipacking_fleurs.py --base-dir <base> --task mel --audio-base <audio>
+python multipacking_fleurs.py --base-dir <base> --task stt --locales 'en_us' 'ms_my'
 ```
 
 ## TTS / expressive multipacking (still notebooks)

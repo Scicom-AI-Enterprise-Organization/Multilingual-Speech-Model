@@ -190,6 +190,20 @@ class DataTrainingArguments:
     train_file: Optional[str] = field(
         default=None, metadata={
             "help": "The input training data file (a text file)."})
+    validation_file: Optional[str] = field(
+        default=None,
+        metadata={"help": "Packed dataset to validate on — the dev-split pack. Runs are ranked "
+                          "on this when it is set."})
+    max_eval_blocks: int = field(
+        default=256,
+        metadata={"help": "Evaluate on an evenly-strided subset of --validation_file this many "
+                          "blocks wide (0 = all of it). A full dev pass per eval costs more than "
+                          "the 100-step run itself."})
+    audio_dir: Optional[str] = field(
+        default=None,
+        metadata={"help": "Root the pack's `audio` paths resolve against. Setting it switches the "
+                          "trainer to the raw log-mel front end (mel_audio.py) — the pack must be "
+                          "a mel pack, which stores paths instead of speech tokens."})
     block_size: Optional[int] = field(
         default=None,
         metadata={
@@ -235,6 +249,18 @@ class Model(Qwen3ForCausalLM):
         super().__init__(config)
         self.loss = LigerFusedLinearCrossEntropyLoss(reduction="sum")
 
+    def compute_loss(self, super_out, labels, num_items_in_batch):
+        embeddings = super_out.last_hidden_state
+        embeddings = embeddings[:, :-1].reshape(-1, embeddings.shape[-1])
+        labels = labels[..., 1:].contiguous().reshape(-1)
+        loss = self.loss(self.lm_head.weight, embeddings, labels)
+        if num_items_in_batch is None:
+            # evaluation_loop does not pass it; count the tokens that carry a label
+            num_items_in_batch = (labels != -100).sum()
+        if torch.is_tensor(num_items_in_batch):
+            num_items_in_batch = num_items_in_batch.to(loss.device)
+        return loss / num_items_in_batch
+
     def forward(self, input_ids, attention_mask=None, position_ids=None, labels=None, num_items_in_batch=None, **kwargs):
         super_out = self.model.forward(
             input_ids = input_ids,
@@ -244,15 +270,65 @@ class Model(Qwen3ForCausalLM):
             **kwargs,
         )
         if labels is not None:
-            embeddings = super_out.last_hidden_state
-            embeddings = embeddings[:,:-1].reshape(-1, embeddings.shape[-1])
-            labels = labels[..., 1:].contiguous()
-            labels = labels.reshape(-1)
-            loss = self.loss(self.lm_head.weight, embeddings, labels)
-            num_items_in_batch = num_items_in_batch.to(loss.device)
-            loss = loss / num_items_in_batch
-            return {'loss': loss}
+            return {'loss': self.compute_loss(super_out, labels, num_items_in_batch)}
         return super_out
+
+
+def build_mel_model_class():
+    """Model with the raw log-mel front end spliced in — built only for mel packs.
+
+    Kept behind a factory so the token-only arms neither import mel_audio nor carry the
+    projector's parameters (which would land in the optimizer's param groups and make the
+    arms un-comparable).
+    """
+    from mel_audio import MelProjector, WhisperMel
+
+    class MelModel(Model):
+        def __init__(self, config):
+            super().__init__(config)
+            self.mel = WhisperMel()
+            self.mel_projector = MelProjector(config.hidden_size)
+
+        def forward(self, input_ids, attention_mask=None, position_ids=None, labels=None,
+                    mel_waveform=None, mel_frame_index=None, mel_segment_id=None,
+                    mel_num_segments=0, num_items_in_batch=None, **kwargs):
+            inputs_embeds = self.get_input_embeddings()(input_ids)
+
+            if mel_waveform is not None and mel_waveform.numel():
+                # fp32 throughout: a bf16 STFT loses the quiet end of the spectrum, and
+                # whisper's (max - 8) floor then spreads that loss over the utterance
+                with torch.autocast(device_type=inputs_embeds.device.type, enabled=False):
+                    mel = self.mel(mel_waveform.float(), mel_frame_index, mel_segment_id,
+                                   int(mel_num_segments))
+                features = self.mel_projector(mel)
+                slots = input_ids == self.config.mel_token_id
+                if int(slots.sum()) != features.shape[0]:
+                    raise RuntimeError(
+                        f'{int(slots.sum())} <|mel|> placeholders but {features.shape[0]} mel '
+                        'positions — the pack and the mel front end disagree on the frame rate')
+                inputs_embeds = inputs_embeds.masked_scatter(
+                    slots.unsqueeze(-1), features.to(inputs_embeds.dtype))
+                mel_touch = None
+            else:
+                # no mel document in this micro-batch — keep the projector in the graph or
+                # ddp_find_unused_parameters=false stalls the all-reduce
+                mel_touch = self.mel_projector.zero_probe(inputs_embeds)
+
+            super_out = self.model.forward(
+                inputs_embeds = inputs_embeds,
+                position_ids = position_ids,
+                attention_mask = attention_mask,
+                output_hidden_states = True,
+                **kwargs,
+            )
+            if labels is not None:
+                loss = self.compute_loss(super_out, labels, num_items_in_batch)
+                if mel_touch is not None:
+                    loss = loss + mel_touch.to(loss.dtype)
+                return {'loss': loss}
+            return super_out
+
+    return MelModel
 
 
 def split_matrix_params(named_params):
@@ -510,6 +586,20 @@ def main():
         tokenizer.add_tokens([AddedToken(t) for t in added_tokens])
         logger.info(f'appended {len(added_tokens)} tokens from {search_args.added_tokens_file}')
 
+    mel = bool(data_args.audio_dir)
+    mel_token_id, mel_label_ids = None, None
+    if mel:
+        from mel_audio import MEL_TOKENS, layout_segments, unpack_block
+
+        if not os.path.isdir(data_args.audio_dir):
+            raise SystemExit(f'--audio_dir {data_args.audio_dir} does not exist')
+        mel_token_id = tokenizer.convert_tokens_to_ids('<|mel|>')
+        if mel_token_id == tokenizer.unk_token_id or mel_token_id is None:
+            raise SystemExit('--audio_dir is set but <|mel|> is not in the tokenizer — point '
+                             '--added_tokens_file at the mel pack\'s added-tokens JSON')
+        # mel tokens are inputs the model is fed, never outputs it should emit
+        mel_label_ids = np.array(tokenizer.convert_tokens_to_ids(MEL_TOKENS), dtype=np.int64)
+
     torch_dtype = (
         model_args.torch_dtype
         if model_args.torch_dtype in ["auto", None]
@@ -519,11 +609,19 @@ def main():
     sequence_length = data_args.block_size
 
     class DatasetFixed(torch.utils.data.Dataset):
-        def __init__(self, local):
+        def __init__(self, local, indices=None):
             self.dataset = StreamingDataset(local=local)
+            # evenly-strided view, for capping the dev pass
+            self.indices = indices
 
         def __getitem__(self, idx):
-            data = self.dataset[idx]
+            row = self.dataset[int(self.indices[idx]) if self.indices is not None else idx]
+            if mel:
+                return unpack_block(row, sequence_length, data_args.audio_dir)
+
+            # copy: the reader hands back the same dict object for a repeated index, so
+            # popping off it would strip those columns from every later read
+            data = dict(row)
             data.pop('audio', None)
             data.pop('text', None)
             data.pop('token_type_ids', None)
@@ -538,21 +636,42 @@ def main():
             return data
 
         def __len__(self):
-            return len(self.dataset)
+            return len(self.indices) if self.indices is not None else len(self.dataset)
 
-    model = Model.from_pretrained(
+    model_cls = build_mel_model_class() if mel else Model
+    model = model_cls.from_pretrained(
         model_args.model_name_or_path,
         attn_implementation = 'kernels-community/vllm-flash-attn3',
         torch_dtype = model_args.torch_dtype,
     )
     model.resize_token_embeddings(len(tokenizer), mean_resizing=False, pad_to_multiple_of=8)
+    if mel:
+        model.config.mel_token_id = mel_token_id
+        # a submodule built in __init__ comes back through from_pretrained's missing-keys
+        # path; print it so a zeroed or nan projector shows up here, not as a 0.0 loss
+        fc1 = model.mel_projector.fc1.weight
+        print(f'mel_projector.fc1: std={float(fc1.std()):.5f} requires_grad={fc1.requires_grad}')
     print(model)
 
     dataset = DatasetFixed(data_args.train_file)
     print('dataset', len(dataset), dataset[0]['attention_mask'].shape)
 
+    eval_dataset = None
+    if data_args.validation_file:
+        eval_dataset = DatasetFixed(data_args.validation_file)
+        total = len(eval_dataset)
+        cap = data_args.max_eval_blocks
+        if cap and total > cap:
+            # strided, not a prefix: packs are written worker by worker, so the first N
+            # blocks are one slice of the corpus rather than a sample of it
+            eval_dataset.indices = np.linspace(0, total, cap, endpoint=False).astype(np.int64)
+        print('eval dataset', len(eval_dataset), f'of {total} blocks')
+
     def collator(batch):
         batch = [b for b in batch if b is not None]
+        if not batch:
+            # only reachable if a single document is longer than block_size
+            raise RuntimeError('every block in this micro-batch was dropped as oversized')
         input_ids = [b['input_ids'] for b in batch]
         position_ids = [b['position_ids'] for b in batch]
         labels = [b['input_ids'].copy() for b in batch]
@@ -560,13 +679,15 @@ def main():
         input_ids = np.concatenate(input_ids)
         position_ids = np.concatenate(position_ids)
         labels = np.concatenate(labels)
+        if mel:
+            labels[np.isin(labels, mel_label_ids)] = -100
         query_lens = np.concatenate(attention_mask)
         cumsum = [0] + np.cumsum(query_lens).tolist()
         max_cumsum = int(np.max(cumsum))
         cu_seq_lens_q = torch.tensor(cumsum, dtype=torch.int32)
         cu_seq_lens_k = torch.tensor(cumsum, dtype=torch.int32)
         max_seqlen_q = np.max(query_lens)
-        return {
+        out = {
             'input_ids': torch.tensor(input_ids)[None],
             'position_ids': torch.tensor(position_ids)[None],
             'labels': torch.tensor(labels)[None],
@@ -575,6 +696,17 @@ def main():
             'max_length_q': max_seqlen_q,
             'max_length_k': max_seqlen_q
         }
+        if mel:
+            # utterance order across the flattened batch has to match the order the
+            # <|mel|> placeholders appear in
+            waveforms = [w for b in batch for w in b.get('waveforms', ())]
+            if waveforms:
+                buffer, frame_index, segment_id = layout_segments(waveforms)
+                out['mel_waveform'] = torch.from_numpy(buffer)
+                out['mel_frame_index'] = torch.from_numpy(frame_index)
+                out['mel_segment_id'] = torch.from_numpy(segment_id)
+                out['mel_num_segments'] = len(waveforms)
+        return out
 
     optimizer = build_optimizer(model, search_args, training_args)
     print(optimizer)
@@ -600,7 +732,7 @@ def main():
         model=model,
         args=training_args,
         train_dataset=dataset,
-        eval_dataset=None,
+        eval_dataset=eval_dataset,
         tokenizer=tokenizer,
         data_collator=collator,
         compute_metrics=None,

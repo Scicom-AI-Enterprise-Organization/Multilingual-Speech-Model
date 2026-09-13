@@ -167,39 +167,47 @@ python hyperparameter_search.py --train-file <multipacking dir> --dry-run   # pr
 The train file must be a ChiniDataset multipacking directory (see
 [preparation](preparation)); custom grids go in `--grid-json`.
 
-##### FLEURS-R — TTS vs STT speech-token task
+##### FLEURS-R — three audio-tokenizer arms, scored on a held-out dev split
 
-The same sweep run over both directions of the speech-token task, on a corpus small
-enough to sweep end to end:
+The same sweep run over three ways of pairing audio with text, on a corpus small enough
+to sweep end to end:
 [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
-(FLEURS-R, 102 locales, precomputed NeuCodec tokens). Both packs come out of one pass
-over the same 248,117 utterances
-([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py)), so the two
-sweeps differ only in what the model predicts:
+(FLEURS-R, 102 locales). All three packs come out of one pass over the same utterances
+([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py)), so an arm
+differs only in what the model reads and predicts:
 
-| pack | document | blocks | tokens |
+| arm | document | train blocks | dev blocks |
 |---|---|---|---|
-| `fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{speech tokens}<\|im_end\|>` | 18,047 | ~177M |
-| `fleurs-stt` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | ~176M |
+| TTS audio tokens | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{NeuCodec tokens}<\|im_end\|>` | 18,047 | 2,237 |
+| STT audio tokens | `<\|im_start\|><\|STT\|>{NeuCodec tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | 2,213 |
+| STT raw mel | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | — | — |
 
-The `speaker` tag is the TitaNet voice cluster the dataset now carries
-([fleurs-dataset](fleurs-dataset)); the packs these numbers come from were built the day
-before that column existed and used the locale in that slot, so re-packing changes the TTS
-side and needs a re-run to stay comparable.
+Both audio representations run at 50 positions/s, so the same utterance costs the same
+context whether it arrives as codec tokens or as raw log-mel ([mel_audio.py](mel_audio.py))
+— the codec's information loss is the only thing that differs between arms 2 and 3.
 
 ```bash
-python preparation/multipacking_fleurs.py --base-dir <base> --workers 96   # both packs
-bash ablation-fleurs-tts.sh      # 16 runs
-bash ablation-fleurs-stt.sh      # 16 runs, + <|STT|> and 102 locale tokens
+python preparation/multipacking_fleurs.py --base-dir <base> --task token --workers 96
+python preparation/multipacking_fleurs.py --base-dir <base> --splits dev --task token
+python preparation/multipacking_fleurs.py --base-dir <base> --task mel --audio-base <audio>
+
+bash ablation-fleurs-tts.sh        # 16 runs
+bash ablation-fleurs-stt.sh        # 16 runs
+bash ablation-fleurs-stt-mel.sh    # 16 runs
+python plot_fleurs_ablation.py     # one figure per arm
 ```
 
-Protocol is the search above (Qwen3-1.7B-Base, 100 steps, warmup 50, FP32-BF16, WSD LR,
-ranked by mean train loss over the last 10 steps) with one deviation: the global token
-size is 48 × 10,240 = 491k tokens/step instead of 21M, because 21M/step would replay
-this corpus 12× inside a single run. Each run therefore covers ~27% of one epoch
-(~30 min on 8×H20). LR grids are unchanged, so they sit high for a batch this small —
-read the comparison within a sweep, not against the 21M-token numbers above.
+Each run **trains on the train split and is ranked on the dev split** (evaluated every
+25 steps on a 256-block slice), so the sweep measures what an optimizer generalises to
+rather than how fast it fits 100 steps. Dev loss is only comparable *within* an arm —
+the TTS arm predicts 65k-way speech tokens while both STT arms predict text — which is
+why [plot_fleurs_ablation.py](plot_fleurs_ablation.py) draws one figure per arm.
 
+Protocol is otherwise the search above (Qwen3-1.7B-Base, 100 steps, warmup 50, FP32-BF16,
+WSD LR) with one deviation: the global token size is 48 × 10,240 = 491k tokens/step
+instead of 21M, because 21M/step would replay this corpus 12× inside a single run. Each
+run covers ~27% of one epoch. LR grids are unchanged, so they sit high for a batch this
+small — read the comparison within a sweep, not against the 21M-token numbers above.
 
 ## Training
 
