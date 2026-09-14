@@ -103,10 +103,15 @@ def plot_task(task, runs, out_dir):
     top = [r for r in scored if task in r['dev']][:10][::-1]
     if top:
         values = [r['dev'][task]['final'] for r in top]
-        bars.barh([r['label'] for r in top], values,
-                  color=[COLORS.get(r['optimizer'], '#777777') for r in top])
+        labels = [r['label'] for r in top]
+        colours = [COLORS.get(r['optimizer'], '#777777') for r in top]
         lo, hi = min(values), max(values)
-        bars.set_xlim(lo - 0.05 * (hi - lo + 1e-6), hi + 0.02 * (hi - lo + 1e-6))
+        left = lo - 0.08 * (hi - lo + 1e-6)
+        # dots, not bars: the axis starts at the best run rather than at zero, and bar
+        # length under a clipped axis reads as a magnitude it does not have
+        bars.hlines(labels, left, values, color=colours, alpha=0.35, linewidth=1.5)
+        bars.scatter(values, labels, color=colours, s=42, zorder=3)
+        bars.set_xlim(left, hi + 0.08 * (hi - lo + 1e-6))
     bars.set_xlabel('final dev loss')
     bars.set_title(f'best {len(top)} configurations on this task', fontsize=10)
     bars.tick_params(axis='y', labelsize=7)

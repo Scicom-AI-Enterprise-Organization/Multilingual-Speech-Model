@@ -254,6 +254,34 @@ instead of 21M, because 21M/step would replay this corpus many times inside a si
 LR grids are unchanged, so they sit high for a batch this small — read the comparison
 within this sweep, not against the 21M-token numbers above.
 
+**Results** (16 runs, 0 failures; full table in `plots/fleurs-ablation.md`):
+
+| rank | run | tts dev | stt dev | mel dev | mean dev |
+|---|---|---|---|---|---|
+| 1 | `soap-lr0.001-mlr0.001` | **8.3547** | **8.3633** | 3.1385 | 6.6189 |
+| 2 | `muon-lr0.001-mlr0.005` | 8.4975 | 8.4706 | 2.9422 | 6.6368 |
+| 3 | `muon-lr0.001-mlr0.01` | 8.3617 | 8.3643 | 3.2126 | 6.6462 |
+| 5 | `shampoo-lr0.001-mlr0.003` | 8.9226 | 8.9529 | **2.8910** | 6.9222 |
+| 10 | `adamw-lr0.0005` | 9.5540 | 9.5686 | 3.8443 | 7.6557 |
+
+<img src="fleurs-ablation-tts.png" width="100%">
+<img src="fleurs-ablation-stt.png" width="100%">
+<img src="fleurs-ablation-mel.png" width="100%">
+
+1. The top three are within 0.03 of each other on the mean, so the honest reading is
+   SOAP and Muon tied at the front, not a winner.
+2. **The best optimizer depends on the task**, which is the argument for scoring them
+   apart: Shampoo wins raw mel outright (2.8910) while sitting 5th overall and mid-pack
+   on both token tasks, and SOAP's other two LRs land 11th and 12th — its 1e-3 result is
+   a narrow peak, not a stable family.
+3. AdamW at the published aggressive LRs (1e-3, 2e-3) finishes **last and second-to-last**.
+   At 491k tokens/step those LRs are simply too high; `adamw-lr0.0005` is the best AdamW
+   at 10th. This is the deviation the section above warns about, showing up in the data.
+4. The mel task's loss is not comparable to the other two: `<|mel|>` placeholders are
+   masked out of the labels (audio is an input, not a prediction target), so it scores
+   text only, while the STT-token task also scores the ~90% of positions that are speech
+   tokens. Codec-vs-mel head to head would need a text-only metric on the token side.
+
 ## Training
 
 ### Base
