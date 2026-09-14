@@ -113,8 +113,9 @@ def parse_result(output_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--train-file', required=True, help='chinidataset multipacking dir')
-    parser.add_argument('--optimizers', nargs='+', default=list(DEFAULT_GRIDS),
-                        help=f'subset of: {", ".join(DEFAULT_GRIDS)}')
+    parser.add_argument('--optimizers', nargs='+', default=None,
+                        help=f'subset of the grid (default: everything in it). '
+                             f'Built-in grids: {", ".join(DEFAULT_GRIDS)}')
     parser.add_argument('--grid-json', help='JSON file overriding DEFAULT_GRIDS')
     parser.add_argument('--model', default='Qwen/Qwen3-1.7B-Base')
     parser.add_argument('--steps', type=int, default=100)
@@ -150,6 +151,8 @@ def main():
         with open(args.grid_json) as f:
             grids = json.load(f)
 
+    # a --grid-json defines the sweep: without --optimizers, run exactly what it holds
+    args.optimizers = args.optimizers or list(grids)
     unknown = set(args.optimizers) - set(grids)
     if unknown:
         parser.error(f'no grid for: {", ".join(sorted(unknown))}')

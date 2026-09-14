@@ -18,6 +18,10 @@
 # 200 steps rather than 100: in the published search the winning run only separates
 # after ~step 50 and is still descending at 100 (hyperparameter-search.png).
 #
+# Runs are namespaced by PREFIX (default fleurs-b2048, the 2048-block batch) so a sweep
+# at one batch size never reuses another's resume markers — the run names are otherwise
+# identical strings and the harness would skip every run as already done.
+#
 #   bash ablation-fleurs.sh                        # the 6-config grid
 #   bash ablation-fleurs.sh --optimizers muon      # subset
 #   bash ablation-fleurs.sh --dry-run              # print commands only
@@ -42,9 +46,9 @@ AUDIO="${AUDIO:-/share/audio-root}"
   --added-tokens-file "${TOKENS:-/share/cv22/out/added_tokens.json}" \
   --audio-dir "$AUDIO" \
   --grid-json "${GRID:-ablation-fleurs-grid.json}" \
-  --run-prefix fleurs \
-  --output-root "$BASE/runs/fleurs" \
-  --state-dir "$BASE/search_state/fleurs" \
+  --run-prefix "${PREFIX:-fleurs-b2048}" \
+  --output-root "$BASE/runs/${PREFIX:-fleurs-b2048}" \
+  --state-dir "$BASE/search_state/${PREFIX:-fleurs-b2048}" \
   --wandb-project "${WANDB_PROJECT:-Multilingual-TTS}" \
   --nproc "${NPROC:-8}" \
   --batch-size "${BS:-4}" \

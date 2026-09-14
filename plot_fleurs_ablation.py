@@ -148,9 +148,9 @@ def table(runs, tasks):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--state-dir', default='/share/multilingual-tts/search_state/fleurs')
-    parser.add_argument('--runs-root', default='/share/multilingual-tts/runs/fleurs')
-    parser.add_argument('--run-prefix', default='fleurs')
+    parser.add_argument('--state-dir', default='/share/multilingual-tts/search_state/fleurs-b2048')
+    parser.add_argument('--runs-root', default='/share/multilingual-tts/runs/fleurs-b2048')
+    parser.add_argument('--run-prefix', default='fleurs-b2048')
     parser.add_argument('--tasks', nargs='+', default=None, help='default: every task in the sweep')
     parser.add_argument('--out-dir', default='.')
     args = parser.parse_args()
