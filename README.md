@@ -209,78 +209,75 @@ python hyperparameter_search.py --train-file <multipacking dir> --dry-run   # pr
 The train file must be a ChiniDataset multipacking directory (see
 [preparation](preparation)); custom grids go in `--grid-json`.
 
-##### FLEURS-R — one mixture, three audio tokenizers, scored per task
+##### FLEURS-R + Common Voice 22 — one mixture, three audio tokenizers, scored per task
 
-The sweep the project actually needs: every run trains on **all three ways of pairing
-audio with text at once**, because the model being built has to do all three. The corpus
-is [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
-(FLEURS-R, 102 locales), and all three packs come out of one pass over the same
-utterances ([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py)) —
-the same 248,117 train / 31,378 dev documents in all three, so only the audio
-representation and the direction change:
+Every run trains on **all three ways of pairing audio with text at once**, because the
+model being built has to do all three. Two corpora, six packs, all cut from the same rows
+so only the representation and direction change
+([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py),
+[preparation/multipacking_cv22.py](preparation/multipacking_cv22.py)):
 
 | pack | document | train blocks | dev blocks |
 |---|---|---|---|
-| `fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{NeuCodec tokens}<\|im_end\|>` | 18,047 | 2,237 |
-| `fleurs-stt` | `<\|im_start\|><\|STT\|>{NeuCodec tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,990 | 2,213 |
-| `fleurs-mel` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | 18,033 | 2,219 |
+| `fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{NeuCodec tokens}<\|im_end\|>` | 18,148 | 2,231 |
+| `fleurs-stt` | `<\|im_start\|><\|STT\|>{NeuCodec tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,984 | 2,208 |
+| `fleurs-mel` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | 18,026 | 2,213 |
+| `cv22-tts` | as above, Common Voice 22 | 166,130 | 12,321 |
+| `cv22-stt` | as above | 158,979 | 11,778 |
+| `cv22-mel` | as above | — | — |
 
-Both audio representations run at 50 positions/s, so an utterance costs the same context
-whether it arrives as codec tokens or as raw whisper log-mel
-([mel_audio.py](mel_audio.py)) — the codec's information loss is the only difference
-between the second and third pack.
+- **FLEURS-R**: [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages),
+  102 locales, 248,117 train / 31,378 dev utterances.
+- **Common Voice 22**: the filtered 6,921,399 rows of
+  [malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS)
+  config `common-voice-22` — 29.1% of raw CV22 — with tokens and audio from
+  [malaysia-ai/common_voice_22_0](https://huggingface.co/datasets/malaysia-ai/common_voice_22_0).
+  130 language tags, ~1.7B tokens per task.
+
+CV22 brings 130 language tags to FLEURS' 102, and the mel tokens are appended *after* the
+language tags, so packing the corpora separately would shift `<|mel|>`'s id between them.
+Both packers therefore take one shared 236-token list
+(`multipacking_cv22.py --stage tokens-file`). Both audio representations run at 50
+positions/s, so an utterance costs the same context either way
+([mel_audio.py](mel_audio.py)).
 
 ```bash
-python preparation/multipacking_fleurs.py --base-dir <base> --task token --workers 96
-python preparation/multipacking_fleurs.py --base-dir <base> --splits dev --task token
-python preparation/multipacking_fleurs.py --base-dir <base> --stage audio --audio-base <audio>
-python preparation/multipacking_fleurs.py --base-dir <base> --task mel --audio-base <audio>
-python preparation/multipacking_fleurs.py --base-dir <base> --splits dev --task mel --audio-base <audio>
-
-bash ablation-fleurs.sh            # 16 runs over the mixture
-python plot_fleurs_ablation.py     # one figure per task
+python preparation/multipacking_cv22.py --base-dir <cv22> --stage tokens-file
+python preparation/multipacking_cv22.py --base-dir <cv22> --stage tokens   # 6.1GB
+python preparation/multipacking_cv22.py --base-dir <cv22> --stage audio    # 286GB, filtered rows only
+python preparation/multipacking_cv22.py --base-dir <cv22> --task all --workers 96
+python preparation/multipacking_fleurs.py --base-dir <base> --task all \
+    --added-tokens-file <cv22>/out/added_tokens.json --audio-base <audio>
+bash preparation/link_audio_root.sh          # one root for both corpora's audio
+bash ablation-fleurs.sh                      # 6 configs
+python plot_fleurs_ablation.py               # one figure per task per corpus
 ```
 
-Each run trains on the mixture and is then scored on **each task's own dev split**,
-reported separately as `eval_tts_loss`, `eval_stt_loss` and `eval_mel_loss` (every 25
-steps, over a 256-block strided slice). Those three never share an axis — the TTS task
-predicts 65k-way speech tokens while both STT tasks predict text — so
-[plot_fleurs_ablation.py](plot_fleurs_ablation.py) draws one figure per task, and runs
-are ranked on the *mean* of the three so no single task's scale decides the order.
+Protocol matches the published search — Qwen3-1.7B-Base, **256 blocks/GPU × 8 = 2048 ×
+10,240 = 21M tokens/step**, warmup 50, FP32-BF16, WSD LR — with two changes. Runs go to
+**200 steps**, because in the published search the winner separates only after ~step 50
+and is still descending at 100. And the batch is reached as micro-batch 4 × 64
+accumulation rather than 8 × 32: at micro-batch 8 a rank peaks at 143,137 MiB of a
+143,771 MiB card, leaving nothing for anything else sharing it; micro-batch 4 peaks
+~11.5GB lower for ~1% more time.
 
-Protocol is otherwise the search above (Qwen3-1.7B-Base, 100 steps, warmup 50, FP32-BF16,
-WSD LR) with one deviation: the global token size is 48 × 10,240 = 491k tokens/step
-instead of 21M, because 21M/step would replay this corpus many times inside a single run.
-LR grids are unchanged, so they sit high for a batch this small — read the comparison
-within this sweep, not against the 21M-token numbers above.
+Each task is scored on its own dev split, reported separately (`eval_fleurs_tts_loss`,
+`eval_cv22_mel_loss`, …) and plotted separately by
+[plot_fleurs_ablation.py](plot_fleurs_ablation.py) — they never share an axis, since the
+TTS task predicts 65k-way speech tokens while the STT tasks predict text. Runs rank on the
+mean across tasks so no single scale decides the order.
 
-**Results** (16 runs, 0 failures; full table in `plots/fleurs-ablation.md`):
-
-| rank | run | tts dev | stt dev | mel dev | mean dev |
-|---|---|---|---|---|---|
-| 1 | `soap-lr0.001-mlr0.001` | **8.3547** | **8.3633** | 3.1385 | 6.6189 |
-| 2 | `muon-lr0.001-mlr0.005` | 8.4975 | 8.4706 | 2.9422 | 6.6368 |
-| 3 | `muon-lr0.001-mlr0.01` | 8.3617 | 8.3643 | 3.2126 | 6.6462 |
-| 5 | `shampoo-lr0.001-mlr0.003` | 8.9226 | 8.9529 | **2.8910** | 6.9222 |
-| 10 | `adamw-lr0.0005` | 9.5540 | 9.5686 | 3.8443 | 7.6557 |
+**Screening run.** A 16-config sweep over FLEURS alone at 48 blocks/step (491k tokens,
+~27% of an epoch) picked the six configurations above — muon 1e-2 · 5e-3, soap 1e-3,
+shampoo 3e-3, adamw 1e-3 · 5e-4. Ranked on mean dev loss, SOAP and Muon tied at the front
+(6.6189 / 6.6368 / 6.6462, within 0.03), Shampoo won raw mel outright from 5th, and AdamW
+at the published aggressive LRs finished last — at that batch those rates are too high.
+Treat it as a screen, not a result: `hyperparameter-search.png` shows the winning run
+separating only after ~50 steps, which a 100-step run at 1/43 of the batch cannot resolve.
 
 <img src="fleurs-ablation-tts.png" width="100%">
 <img src="fleurs-ablation-stt.png" width="100%">
 <img src="fleurs-ablation-mel.png" width="100%">
-
-1. The top three are within 0.03 of each other on the mean, so the honest reading is
-   SOAP and Muon tied at the front, not a winner.
-2. **The best optimizer depends on the task**, which is the argument for scoring them
-   apart: Shampoo wins raw mel outright (2.8910) while sitting 5th overall and mid-pack
-   on both token tasks, and SOAP's other two LRs land 11th and 12th — its 1e-3 result is
-   a narrow peak, not a stable family.
-3. AdamW at the published aggressive LRs (1e-3, 2e-3) finishes **last and second-to-last**.
-   At 491k tokens/step those LRs are simply too high; `adamw-lr0.0005` is the best AdamW
-   at 10th. This is the deviation the section above warns about, showing up in the data.
-4. The mel task's loss is not comparable to the other two: `<|mel|>` placeholders are
-   masked out of the labels (audio is an input, not a prediction target), so it scores
-   text only, while the STT-token task also scores the ~90% of positions that are speech
-   tokens. Codec-vs-mel head to head would need a text-only metric on the token side.
 
 ## Training
 

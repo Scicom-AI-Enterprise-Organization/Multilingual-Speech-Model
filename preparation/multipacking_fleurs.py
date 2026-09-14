@@ -362,6 +362,24 @@ def pack_worker(args):
     return stats
 
 
+def tokenizer_from(added_tokens_file):
+    """Qwen3 + speech tokens + a prebuilt added-token list (shared across corpora).
+
+    Two corpora packed against different language-tag lists disagree on ids, so the
+    FLEURS and CV22 packs take the same file (built by multipacking_cv22.py).
+    """
+    from transformers import AddedToken, AutoTokenizer
+
+    with open(added_tokens_file) as f:
+        added = json.load(f)
+    log(f'building tokenizer (+65,537 speech tokens, {len(added)} added tokens from '
+        f'{added_tokens_file})')
+    tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen3-1.7B-Base')
+    extra = [AddedToken('<|speech_start|>')] + [AddedToken(f'<|s_{i}|>') for i in range(65536)]
+    tokenizer.add_tokens(extra + [AddedToken(t) for t in added])
+    return tokenizer, added
+
+
 def build_tokenizer(locales, add_mel=False):
     """Qwen3 + speech tokens (shared ids) + <|STT|>/locale tokens appended after them.
 
@@ -395,13 +413,17 @@ def snake_chunks(files, workers):
     return groups
 
 
-def pack(base, files, tasks, workers, suffix='', audio_base=None):
+def pack(base, files, tasks, workers, suffix='', audio_base=None, added_tokens_file=None):
     from chinidataset import StreamingDataset
     from chinidataset.util import merge_index
 
     locales = sorted({f.name.rsplit('-', 1)[0] for f in files})
     mel = 'mel' in tasks
-    tokenizer, stt_tokens, mel_tokens = build_tokenizer(locales, add_mel=mel)
+    if added_tokens_file:
+        tokenizer, added = tokenizer_from(added_tokens_file)
+        stt_tokens, mel_tokens = added, []
+    else:
+        tokenizer, stt_tokens, mel_tokens = build_tokenizer(locales, add_mel=mel)
 
     out_root = base / 'out'
     for task in tasks:
@@ -454,6 +476,9 @@ def main():
     parser.add_argument('--workers', type=int, default=max(1, (os.cpu_count() or 8) // 2))
     parser.add_argument('--stage', choices=['download', 'audio', 'pack', 'all'], default='all',
                         help="'audio' materialises the wavs the mel pack points at")
+    parser.add_argument('--added-tokens-file', default=None,
+                        help='shared token list to pack against (from multipacking_cv22.py '
+                             '--stage tokens-file); without it the list is FLEURS-only')
     parser.add_argument('--keep-zips', action='store_true')
     args = parser.parse_args()
 
@@ -478,7 +503,7 @@ def main():
     log(f'{len(files)} metadata parquets, tasks: {", ".join(tasks)}')
 
     if args.stage in ('pack', 'all'):
-        pack(base, files, tasks, args.workers, suffix, audio_base)
+        pack(base, files, tasks, args.workers, suffix, audio_base, args.added_tokens_file)
 
 
 if __name__ == '__main__':

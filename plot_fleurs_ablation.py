@@ -17,6 +17,13 @@ import json
 from pathlib import Path
 
 TASKS = {
+    'fleurs_tts': 'FLEURS · TTS — text → NeuCodec speech tokens',
+    'fleurs_stt': 'FLEURS · STT — NeuCodec speech tokens → text',
+    'fleurs_mel': 'FLEURS · STT — whisper log-mel → text',
+    'cv22_tts': 'Common Voice 22 · TTS — text → NeuCodec speech tokens',
+    'cv22_stt': 'Common Voice 22 · STT — NeuCodec speech tokens → text',
+    'cv22_mel': 'Common Voice 22 · STT — whisper log-mel → text',
+    # single-corpus sweeps
     'tts': 'TTS — text → NeuCodec speech tokens',
     'stt': 'STT — NeuCodec speech tokens → text',
     'mel': 'STT — whisper log-mel → text',

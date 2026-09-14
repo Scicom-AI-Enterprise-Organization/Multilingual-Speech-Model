@@ -1,24 +1,25 @@
 #!/bin/bash
-# Optimizer search (README "Optimizer search") over the FLEURS-R ablation mixture.
+# Optimizer search (README "Optimizer search") at the published global batch, over the
+# FLEURS-R + filtered Common Voice 22 mixture.
 #
-# One run trains on all three packs at once — TTS audio tokens, STT audio tokens and STT
-# raw mel, at their natural proportions — so every optimizer is judged on the model the
-# project actually wants: one that speaks, listens through the codec, and listens through
-# raw mel. The three tasks are then scored on their own dev splits, reported separately as
-# eval_tts_loss / eval_stt_loss / eval_mel_loss, and plotted separately by
-# plot_fleurs_ablation.py. They share no axis: the TTS task predicts 65k-way speech
-# tokens, the two STT tasks predict text.
+# One run trains on all six packs at once — TTS audio tokens, STT audio tokens and STT
+# raw mel, from both corpora — so every optimizer is judged on the model the project
+# actually wants: one that speaks, listens through the codec, and listens through raw
+# mel. Each task is then scored on its own dev split and reported separately
+# (eval_fleurs_tts_loss, eval_cv22_mel_loss, …), and plotted per task by
+# plot_fleurs_ablation.py. Losses never share an axis across tasks: TTS predicts
+# 65k-way speech tokens, the STT tasks predict text.
 #
-# Runs are ranked on the mean of the three dev losses, so no single task's scale decides
-# the order alone.
+# Batch is the published one: 256 blocks/GPU x 8 GPUs = 2048 x 10,240 = 21M tokens/step.
+# It is reached with micro-batch 4 and 64 accumulation steps rather than 8 x 32 — at
+# micro-batch 8 a rank peaks at 143.1GB of the 143.8GB card, which leaves nothing for
+# the tenant sharing GPUs 6-7; micro-batch 4 peaks ~11GB lower and costs ~1% more time.
 #
-# Same protocol as the published search: Qwen3-1.7B-Base, 100 steps, warmup 50, FP32-BF16
-# mixed precision, WSD LR, one grid per optimizer. Only the global token size differs: the
-# published search ran 10,240 x 256 x 8 GPUs = 21M tokens/step, which this corpus would
-# replay many times over inside one run. 1 x 6 x 8 GPUs = 48 blocks = 491k tokens/step.
+# 200 steps rather than 100: in the published search the winning run only separates
+# after ~step 50 and is still descending at 100 (hyperparameter-search.png).
 #
-#   bash ablation-fleurs.sh                        # full grid (16 runs)
-#   bash ablation-fleurs.sh --optimizers muon soap # subset
+#   bash ablation-fleurs.sh                        # the 6-config grid
+#   bash ablation-fleurs.sh --optimizers muon      # subset
 #   bash ablation-fleurs.sh --dry-run              # print commands only
 set -e
 cd "$(dirname "$0")"
@@ -29,23 +30,26 @@ export HF_HUB_DISABLE_XET=1
 export TOKENIZERS_PARALLELISM=false
 
 BASE="${BASE:-/share/multilingual-tts}"
-PACKS="$BASE/fleurs/out"
-# the mel pack stores audio paths; this is the root they resolve against
-AUDIO="${AUDIO:-/share/fleurs-work}"
+F="$BASE/fleurs/out"                       # FLEURS packs
+C="${CV22:-/share/cv22/out}"               # Common Voice 22 packs
+# mel packs store audio paths; this root holds both corpora's audio (symlinked per
+# language, which never collide: FLEURS uses en_us-style tags, CV22 plain en)
+AUDIO="${AUDIO:-/share/audio-root}"
 
 "$BASE/venv/bin/python" hyperparameter_search.py \
-  --train-file "$PACKS/fleurs-tts,$PACKS/fleurs-stt,$PACKS/fleurs-mel" \
-  --validation-file "tts=$PACKS/fleurs-tts-dev,stt=$PACKS/fleurs-stt-dev,mel=$PACKS/fleurs-mel-dev" \
-  --added-tokens-file "$PACKS/fleurs_mel_added_tokens.json" \
+  --train-file "$F/fleurs-tts,$F/fleurs-stt,$F/fleurs-mel,$C/cv22-tts,$C/cv22-stt,$C/cv22-mel" \
+  --validation-file "fleurs_tts=$F/fleurs-tts-dev,fleurs_stt=$F/fleurs-stt-dev,fleurs_mel=$F/fleurs-mel-dev,cv22_tts=$C/cv22-tts-dev,cv22_stt=$C/cv22-stt-dev,cv22_mel=$C/cv22-mel-dev" \
+  --added-tokens-file "${TOKENS:-/share/cv22/out/added_tokens.json}" \
   --audio-dir "$AUDIO" \
+  --grid-json "${GRID:-ablation-fleurs-grid.json}" \
   --run-prefix fleurs \
   --output-root "$BASE/runs/fleurs" \
   --state-dir "$BASE/search_state/fleurs" \
   --wandb-project "${WANDB_PROJECT:-Multilingual-TTS}" \
   --nproc "${NPROC:-8}" \
-  --batch-size "${BS:-1}" \
-  --grad-accum "${ACCUM:-6}" \
-  --steps "${STEPS:-100}" \
+  --batch-size "${BS:-4}" \
+  --grad-accum "${ACCUM:-64}" \
+  --steps "${STEPS:-200}" \
   --warmup "${WARMUP:-50}" \
   --num-decay-steps "${DECAY:-243}" \
   --eval-steps "${EVAL_STEPS:-25}" \
