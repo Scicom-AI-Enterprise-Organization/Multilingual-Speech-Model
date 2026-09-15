@@ -3,7 +3,7 @@
 Maintenance tooling for
 [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages)
 — FLEURS-R metadata + source audio + precomputed NeuCodec tokens for 102 locales, the
-corpus the [FLEURS optimizer ablation](../README.md#fleurs-r--tts-vs-stt-speech-token-task)
+corpus the [FLEURS optimizer ablation](../README.md#fleurs-r--common-voice-22--one-mixture-three-audio-tokenizers-scored-per-task)
 trains on.
 
 ## What was wrong

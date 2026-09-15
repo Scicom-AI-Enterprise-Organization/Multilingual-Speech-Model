@@ -165,8 +165,18 @@ def main():
 
     EMPTY_COLS = ["file", "orig_text", "whisper_text", "tagged_text", "nv_text",
                   "language", "events", "n_placed"]
+
+    def write_empty(path):
+        # explicit arrow schema — a bare empty DataFrame writes null-typed columns,
+        # which breaks schema merging across shards (HF viewer / datasets glob)
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        schema = pa.schema([(c, pa.large_string()) for c in EMPTY_COLS[:-1]]
+                           + [("n_placed", pa.int64())])
+        pq.write_table(schema.empty_table(), path)
+
     if not os.path.exists(args.events) or os.path.getsize(args.events) == 0:
-        pd.DataFrame(columns=EMPTY_COLS).to_parquet(f"{args.out_dir}/tagged.parquet")
+        write_empty(f"{args.out_dir}/tagged.parquet")
         print(f"no events mined; wrote empty {args.out_dir}/tagged.parquet")
         return
 
@@ -280,8 +290,12 @@ def main():
             "n_placed": sum(1 for e in evs if e.get("placed")),
         })
 
-    df = pd.DataFrame(rows, columns=EMPTY_COLS)
     out = f"{args.out_dir}/tagged.parquet"
+    if not rows:
+        write_empty(out)
+        print(f"wrote empty {out} (no rows survived)")
+        return
+    df = pd.DataFrame(rows, columns=EMPTY_COLS)
     df.to_parquet(out)
     print(f"wrote {out}: {len(df)} rows, {int(df['n_placed'].sum())} placed tags")
     stats = defaultdict(int)
