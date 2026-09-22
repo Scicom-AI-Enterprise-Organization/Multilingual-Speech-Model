@@ -1,35 +1,61 @@
 # Multilingual-Speech-Model
 
-Open-source multilingual **speech** models built on [NeuCodec](https://github.com/neuphonic/neucodec)
-speech tokens at 50 TPS — Qwen3 backbones continued-pretrained to both **speak and listen**:
-text-to-speech and voice cloning across 150+ languages, speech-to-text as the inverse task
-(from speech tokens or from raw whisper log-mel), plus expressive and non-verbal control.
+Qwen3 backbones continued-pretrained on [NeuCodec](https://github.com/neuphonic/neucodec)
+speech tokens at 50 TPS. The model speaks and listens: text-to-speech and voice cloning in
+150+ languages, speech-to-text from either speech tokens or raw whisper log-mel, plus
+expressive and non-verbal control.
 
-> **V1 — the TTS-only era — is in [README_V1.md](README_V1.md)**: released checkpoints, the
-> 76-language CER/MOS and speaker-similarity benchmarks, the base/expressive datasets, the
-> one-epoch and learning-rate ablations, and the base/expressive training recipes.
+> **V1 — the TTS-only era — lives in [README_V1.md](README_V1.md)**: released checkpoints,
+> the 76-language CER/MOS and speaker-similarity benchmarks, the base and expressive
+> datasets, and the one-epoch and learning-rate ablations.
+
+## The three tasks
+
+Every task is one packed document. Audio arrives as codec tokens or as raw mel, both at
+50 positions per second, so the same utterance costs the same context either way.
+
+```
+TTS        speaker: text              ->  <|speech_start|> s₀ s₁ s₂ … sₙ
+STT        s₀ s₁ s₂ … sₙ              ->  <|lang|> text
+STT (mel)  ░░ 128-bin log-mel ░░      ->  <|lang|> text
+```
+
+Documents are greedily packed into 10,240-token blocks and kept attention-isolated:
+`position_ids` reset per document, `attention_mask` carries per-document lengths, and the
+trainer rebuilds a block-diagonal mask. Nothing attends across a document boundary.
+
+```
+audio + text
+   ├─ NeuCodec, 50 TPS ──→ <|s_N|> tokens ─┐
+   └─ whisper log-mel ───→ <|mel|> slots ──┤
+                                           ├─→ 10,240-token blocks
+                                           └─→ ChiniDataset parquet
+```
 
 ## Evaluation
 
 ### [Low-Resource Language Test Set](low-language-testset/README.md)
 
-A held-out test set for the **long tail** of the training corpus: the 50 lowest-resource
-languages of [malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS),
-25 utterances each — 1,250 rows, 2.56 hours, 514 speakers, published as
+A held-out test set for the long tail: the 50 lowest-resource languages of
+[malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS),
+25 utterances each. 1,250 rows, 2.56 hours, 514 speakers, published as
 [malaysia-ai/Low-Language-TTS](https://huggingface.co/datasets/malaysia-ai/Low-Language-TTS).
 
-Every row carries **audio + NeuCodec tokens + normalized transcription**, so it scores both
-directions: TTS/VC (generate from the text, CER against it) and STT (tokens in, text out).
-Coverage runs from Wayuu (1,128 rows in the whole corpus) to Kasem (61,277), taking in
-Naga varieties, Quichua, Gronings, Baoulé, Karamojong, Iban, Meitei, Tamazight, Lule Sami,
-Ladino, Khasi, Hawrami, Kokborok, Kabardian, Vagla and Swiss German along the way.
+Every row carries audio, NeuCodec tokens and a normalized transcription, so it scores both
+directions. Coverage runs from Wayuu (1,128 rows in the whole corpus) to Kasem (61,277),
+and takes in Naga varieties, Quichua, Gronings, Baoulé, Karamojong, Iban, Meitei,
+Tamazight, Lule Sami, Ladino, Khasi, Hawrami, Kokborok, Kabardian, Vagla and Swiss German.
 
-Languages are **not** picked by taking the rarest GlotLID labels — measured on this corpus,
-only 3 of the 500 rarest labels survive verification, because that tail is the detector
-firing on short lines of other languages. A language qualifies when some subset was
-*collected for it* (≥ 50 rows and ≥ 40% of that subset), and each row is then verified
-individually: ≥ 40 chars and ≥ 5 words, GlotLID v3 reproducing the stored label at
-probability ≥ 0.90 and margin ≥ 0.50, and the decoded audio length matching `len(tokens) / 50`.
+Languages are not picked by taking the rarest GlotLID labels. Only 3 of the 500 rarest
+labels survive verification on this corpus: that tail is mostly the detector firing on
+short lines of other languages. A language qualifies when some subset was collected for it
+(≥ 50 rows and ≥ 40% of that subset). Each row is then verified on its own:
+
+```
+≥ 40 characters and ≥ 5 words
+GlotLID v3 reproduces the stored label, probability ≥ 0.90, margin ≥ 0.50
+decoded audio length matches len(tokens) / 50
+```
 
 **Preparation:** [low-language-testset](low-language-testset)
 
@@ -37,20 +63,8 @@ probability ≥ 0.90 and margin ≥ 0.50, and the decoded audio length matching 
 
 ### Base
 
-Growing — the TTS corpus and the voice-conversion pairs both gained data since V1.
-
-**Sources**
-
-1. https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS
-2. https://huggingface.co/datasets/Scicom-intl/Emilia-YODAS-Voice-Conversion
-3. https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia
-4. https://huggingface.co/datasets/Scicom-intl/YouTube-Cantonese-Emilia
-
-**Size**
-
-Multi-speaker multilingual Voice Cloning — **37.34B tokens** over six packed corpora,
-up from 35.88B in [V1](README_V1.md#base): the increase is YouTube-Cantonese-Emilia's
-1.46B (blocks × 10,240; greedy packing, so true counts sit slightly below).
+Voice cloning, multi-speaker and multilingual: **37.34B tokens** over six packed corpora,
+up from 35.88B in [V1](README_V1.md#base). The increase is YouTube-Cantonese-Emilia.
 
 | corpus | blocks | tokens |
 |---|---:|---:|
@@ -62,46 +76,49 @@ up from 35.88B in [V1](README_V1.md#base): the increase is YouTube-Cantonese-Emi
 | Malaysian-Tamil-Emilia | 81,723 | ~0.84B |
 | **total** | **3,646,600** | **~37.34B** |
 
-Per-dataset configs, reject filters and pack targets are in
-[preparation/README.md](preparation/README.md).
+Blocks × 10,240; greedy packing puts true counts slightly below. Malaysian-Emilia and
+Malaysian-Emilia-dialects are two disjoint configs of one HF repo, not one corpus counted
+twice. Per-dataset configs, reject filters and pack targets: [preparation/README.md](preparation/README.md).
 
-Multi-speaker multilingual TTS, 150+ languages — the source corpus
-`malaysia-ai/Multilingual-TTS` is now **121.8M rows across 1,552 subsets** (4.64TB of audio
-zips + NeuCodec tokens), up from the 25.35B-token pack V1 trained on.
+The TTS source corpus `malaysia-ai/Multilingual-TTS` now holds **121.8M rows across 1,552
+subsets** (4.64TB of audio zips and NeuCodec tokens), up from the 25.35B-token pack V1
+trained on.
+
+**Sources:** [Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS) ·
+[Emilia-YODAS-Voice-Conversion](https://huggingface.co/datasets/Scicom-intl/Emilia-YODAS-Voice-Conversion) ·
+[Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) ·
+[YouTube-Cantonese-Emilia](https://huggingface.co/datasets/Scicom-intl/YouTube-Cantonese-Emilia)
 
 **Preparation:** [preparation](preparation)
 
 ### Non-verbal Tags
 
-Inline non-verbal event tags (laughter, cough, sigh, ...) mined from the Emilia-style corpora with
-PANNs SED + CLAP verification + whisper word-timestamp placement, in two renderings per row:
-Higgs-TTS style (`<|sfx:laughter|>Haha`) and Emilia-NV style (`[Laughter]`).
+Laughter, cough, sigh and similar events, mined with PANNs SED, verified with CLAP, and
+placed by whisper word timestamps. Two renderings per row: Higgs-TTS style
+(`<|sfx:laughter|>Haha`) and Emilia-NV style (`[Laughter]`).
 
-**Sources → outputs**
-
-1. [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) → [Malaysian-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia-Nonverbal-Tags) — 8,702 rows / 8,985 events
-2. [Malaysian-Tamil-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia) → [Malaysian-Tamil-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia-Nonverbal-Tags) — 2,383 rows / 2,539 events
-3. [Malaysian-Chinese-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia) → [Malaysian-Chinese-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia-Nonverbal-Tags) — 1,655 rows / 1,694 events
+| source | output | rows | events |
+|---|---|---:|---:|
+| [Malaysian-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia) | [Malaysian-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Emilia-Nonverbal-Tags) | 8,702 | 8,985 |
+| [Malaysian-Tamil-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia) | [Malaysian-Tamil-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Tamil-Emilia-Nonverbal-Tags) | 2,383 | 2,539 |
+| [Malaysian-Chinese-Emilia](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia) | [Malaysian-Chinese-Emilia-Nonverbal-Tags](https://huggingface.co/datasets/Scicom-intl/Malaysian-Chinese-Emilia-Nonverbal-Tags) | 1,655 | 1,694 |
 
 **Preparation:** [nonverbal-tagging](nonverbal-tagging)
 
 ### Speech-to-Text
 
-The inverse task, so one model both speaks and listens. Two packs of the same task, one
-per audio representation:
+The inverse task, in two packs — one per audio representation.
 
 | pack | document | audio as |
 |---|---|---|
-| `multipacking_stt.py` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{lang}\|>{text}<\|im_end\|>` | NeuCodec `<\|s_N\|>` tokens, 50 tokens/s |
-| `multipacking_stt_mel.py` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{lang}\|>{text}<\|im_end\|>` | raw whisper log-mel, 50 positions/s |
+| `multipacking_stt.py` | `<\|im_start\|><\|STT\|>{speech tokens}<\|{lang}\|>{text}<\|im_end\|>` | NeuCodec `<\|s_N\|>`, 50 tokens/s |
+| `multipacking_stt_mel.py` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{lang}\|>{text}<\|im_end\|>` | whisper log-mel, 50 positions/s |
 
-Both run at 50 positions/s, so the same audio costs the same context either way and the
-codec's information loss is the only thing that differs between them.
+Same rate, same context cost. The codec's information loss is the only difference.
 
-**Sources**
-
-1. https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS-language — 118M rows,
-   1493 subsets, with GlotLID v3 `language` and rule-normalized `post-normalized` columns
+**Source:** [malaysia-ai/Multilingual-TTS-language](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS-language),
+118M rows over 1,493 subsets, with GlotLID v3 `language` and rule-normalized
+`post-normalized` columns.
 
 **Preparation:** [stt](stt)
 
@@ -109,69 +126,70 @@ codec's information loss is the only thing that differs between them.
 
 ### Optimizer search
 
-The V1 grid scripts only covered Muon+AdamW, so the harness was rebuilt around a
-pluggable-optimizer trainer: [hyperparameter_search.py](hyperparameter_search.py) drives
-[qwen3_optimizer_search.py](qwen3_optimizer_search.py) and sweeps each optimizer over its
-own LR grid under the identical 100-step setup as the
-[V1 hyperparameter search](README_V1.md#hyperparameter-search).
+[hyperparameter_search.py](hyperparameter_search.py) drives
+[qwen3_optimizer_search.py](qwen3_optimizer_search.py), a trainer with a pluggable
+optimizer. Each optimizer gets its own LR grid.
 
-| optimizer | placement | swept LRs |
+| optimizer | applied to | swept LRs |
 |---|---|---|
 | `adamw` | everything | 5e-4 · 1e-3 · 2e-3 |
-| `muon` | 2D hidden weights (AdamW on embeddings/head/rest) | matrix 5e-3 · 1e-2 · 2e-2 |
-| `shampoo` ([ScalableShampoo](https://github.com/kozistr/pytorch_optimizer)) | 2D hidden weights (AdamW on rest) | matrix 5e-4 · 1e-3 · 3e-3 |
-| `soap` | 2D hidden weights (AdamW on rest) | matrix 1e-3 · 3e-3 · 1e-2 |
+| `muon` | 2D hidden weights (AdamW on the rest) | matrix 5e-3 · 1e-2 · 2e-2 |
+| `soap` | 2D hidden weights (AdamW on the rest) | matrix 1e-3 · 3e-3 · 1e-2 |
+| `shampoo` ([ScalableShampoo](https://github.com/kozistr/pytorch_optimizer)) | 2D hidden weights (AdamW on the rest) | matrix 5e-4 · 1e-3 · 3e-3 |
 | `lion` | everything | 1e-4 · 3e-4 (wd 0.1) |
 | `ademamix` | everything | 5e-4 · 1e-3 |
 
-Hybrid optimizers use the same 2D-hidden-weight/AdamW split as Muon
-("Muon is Scalable for LLM Training", arXiv:2502.16982), so the comparison is
-apples-to-apples. Runs resume by name (`search_state/<run>.json`) and the harness ranks
-finished runs by mean train loss over the last 10 steps into `search_state/summary.json`.
+Hybrids use Muon's 2D-hidden-weight split ("Muon is Scalable for LLM Training",
+arXiv:2502.16982), so the comparison is like for like. Runs resume by name from
+`search_state/<prefix>/<run>.json`.
 
 ```bash
-pip install pytorch_optimizer   # needed for shampoo / soap / lion / ademamix
+pip install pytorch_optimizer            # shampoo / soap / lion / ademamix
 
-# everything, or a subset:
-python hyperparameter_search.py --train-file <multipacking dir>
-python hyperparameter_search.py --train-file <multipacking dir> --optimizers muon shampoo soap
-python hyperparameter_search.py --train-file <multipacking dir> --dry-run   # print commands only
+python hyperparameter_search.py --train-file <pack dir>
+python hyperparameter_search.py --train-file <pack dir> --optimizers muon soap
+python hyperparameter_search.py --train-file <pack dir> --dry-run
 ```
 
-The train file must be a ChiniDataset multipacking directory (see
-[preparation](preparation)); custom grids go in `--grid-json`.
+Those are the built-in grids. A `--grid-json` file replaces them and defines the sweep —
+the FLEURS sweep below uses one. Name every sweep with `PREFIX`: run names carry
+the optimizer and LRs but not the batch size, so two sweeps at different batches share
+resume markers and the second one silently reprints the first one's ranking.
 
-#### FLEURS-R + Common Voice 22 — one mixture, three audio tokenizers, scored per task
+#### FLEURS-R + Common Voice 22
 
-Every run trains on **all three ways of pairing audio with text at once**, because the
-model being built has to do all three. Two corpora, six packs, all cut from the same rows
-so only the representation and direction change
-([preparation/multipacking_fleurs.py](preparation/multipacking_fleurs.py),
-[preparation/multipacking_cv22.py](preparation/multipacking_cv22.py)):
+One run trains on all three tasks at once, then each task is scored on its own dev split.
 
-| pack | document | train blocks | dev blocks |
-|---|---|---|---|
-| `fleurs-tts` | `<\|im_start\|>{speaker}: {text}<\|speech_start\|>{NeuCodec tokens}<\|im_end\|>` | 18,148 | 2,231 |
-| `fleurs-stt` | `<\|im_start\|><\|STT\|>{NeuCodec tokens}<\|{locale}\|>{text}<\|im_end\|>` | 17,984 | 2,208 |
-| `fleurs-mel` | `<\|im_start\|><\|STT\|><\|mel_start\|>{P × <\|mel\|>}<\|mel_end\|><\|{locale}\|>{text}<\|im_end\|>` | 18,026 | 2,213 |
-| `cv22-tts` | as above, Common Voice 22 | 166,130 | 12,321 |
-| `cv22-stt` | as above | 158,979 | 11,778 |
-| `cv22-mel` | as above | — | — |
+```
+ fleurs-tts  ┐                                              ┌ eval_fleurs_tts
+ fleurs-stt  │                                              │ eval_fleurs_stt
+ fleurs-mel  ├─→  561,123 blocks  ─→  200 steps        ─→   ├ eval_fleurs_mel
+ cv22-tts    │    mixed 1:1:1:1:1:1   21M tokens/step       │ eval_cv22_tts
+ cv22-stt    │                        Qwen3-1.7B-Base       │ eval_cv22_stt
+ cv22-mel    ┘                                              └ eval_cv22_mel
+```
 
-- **FLEURS-R**: [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages),
-  102 locales, 248,117 train / 31,378 dev utterances.
-- **Common Voice 22**: the filtered 6,921,399 rows of
-  [malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS)
-  config `common-voice-22` — 29.1% of raw CV22 — with tokens and audio from
+| pack | train blocks | dev blocks |
+|---|---:|---:|
+| `fleurs-tts` | 18,148 | 2,231 |
+| `fleurs-stt` | 17,984 | 2,208 |
+| `fleurs-mel` | 18,026 | 2,213 |
+| `cv22-tts` | 166,130 | 12,321 |
+| `cv22-stt` | 158,979 | 11,778 |
+| `cv22-mel` | 181,856 | 13,934 |
+
+- **FLEURS-R** — [malaysia-ai/fleurs-r-neucodec-all-languages](https://huggingface.co/datasets/malaysia-ai/fleurs-r-neucodec-all-languages).
+  102 locales, 248,117 train and 31,378 dev utterances.
+- **Common Voice 22** — the filtered 6,921,399 rows of `common-voice-22` in
+  [malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS),
+  29.1% of raw CV22. Tokens and audio come from
   [malaysia-ai/common_voice_22_0](https://huggingface.co/datasets/malaysia-ai/common_voice_22_0).
   130 language tags, ~1.7B tokens per task.
 
-CV22 brings 130 language tags to FLEURS' 102, and the mel tokens are appended *after* the
-language tags, so packing the corpora separately would shift `<|mel|>`'s id between them.
-Both packers therefore take one shared 236-token list
-(`multipacking_cv22.py --stage tokens-file`). Both audio representations run at 50
-positions/s, so an utterance costs the same context either way
-([mel_audio.py](mel_audio.py)).
+All six packs cover the same rows, so only the representation and the direction change.
+CV22 adds 130 language tags to FLEURS' 102, and the mel tokens are appended after the
+language tags. Packing the corpora separately would therefore shift `<|mel|>`'s id between
+them, so both packers read one shared 236-token list.
 
 ```bash
 python preparation/multipacking_cv22.py --base-dir <cv22> --stage tokens-file
@@ -180,32 +198,53 @@ python preparation/multipacking_cv22.py --base-dir <cv22> --stage audio    # 286
 python preparation/multipacking_cv22.py --base-dir <cv22> --task all --workers 96
 python preparation/multipacking_fleurs.py --base-dir <base> --task all \
     --added-tokens-file <cv22>/out/added_tokens.json --audio-base <audio>
-bash preparation/link_audio_root.sh          # one root for both corpora's audio
-bash ablation-fleurs.sh                      # 6 configs
-python plot_fleurs_ablation.py               # one figure per task per corpus
+bash preparation/link_audio_root.sh      # one audio root for both corpora
+bash ablation-fleurs.sh
+python plot_fleurs_ablation.py           # one figure per task
 ```
 
-Protocol matches the published search — Qwen3-1.7B-Base, **256 blocks/GPU × 8 = 2048 ×
-10,240 = 21M tokens/step**, warmup 50, FP32-BF16, WSD LR — with two changes. Runs go to
-**200 steps**, because in the published search the winner separates only after ~step 50
-and is still descending at 100. And the batch is reached as micro-batch 4 × 64
-accumulation rather than 8 × 32: at micro-batch 8 a rank peaks at 143,137 MiB of a
-143,771 MiB card, leaving nothing for anything else sharing it; micro-batch 4 peaks
-~11.5GB lower for ~1% more time.
+**Protocol.** Qwen3-1.7B-Base, 21M tokens/step, warmup 50, FP32-BF16, WSD LR, 200 steps.
+Two departures from V1:
 
-Each task is scored on its own dev split, reported separately (`eval_fleurs_tts_loss`,
-`eval_cv22_mel_loss`, …) and plotted separately by
-[plot_fleurs_ablation.py](plot_fleurs_ablation.py) — they never share an axis, since the
-TTS task predicts 65k-way speech tokens while the STT tasks predict text. Runs rank on the
-mean across tasks so no single scale decides the order.
+| | V1 | here | why |
+|---|---|---|---|
+| steps | 100 | 200 | the V1 winner separates only after ~step 50 and is still descending at 100 |
+| batch shape | 8 × 32 | 4 × 64 | micro-batch 8 peaks a rank at 143,137 MiB of a 143,771 MiB card |
 
-**Screening run.** A 16-config sweep over FLEURS alone at 48 blocks/step (491k tokens,
-~27% of an epoch) picked the six configurations above — muon 1e-2 · 5e-3, soap 1e-3,
-shampoo 3e-3, adamw 1e-3 · 5e-4. Ranked on mean dev loss, SOAP and Muon tied at the front
-(6.6189 / 6.6368 / 6.6462, within 0.03), Shampoo won raw mel outright from 5th, and AdamW
-at the published aggressive LRs finished last — at that batch those rates are too high.
-Treat it as a screen, not a result: `hyperparameter-search.png` shows the winning run
-separating only after ~50 steps, which a 100-step run at 1/43 of the batch cannot resolve.
+Dev losses are never averaged across tasks in a plot: TTS predicts 65k-way speech tokens,
+the STT tasks predict text. Runs rank on the mean so no single scale decides the order.
+
+**Results** (9 of 10 runs; `soap 5e-4` in flight, `soap 1e-4` queued):
+
+| rank | run | mean dev | f_tts | f_stt | f_mel | c_tts | c_stt | c_mel |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | `soap mlr 1e-3` | **5.4178** | 6.72 | 6.80 | 2.47 | 7.00 | 7.34 | 2.18 |
+| 2 | `muon mlr 1e-2` | 5.5534 | 6.94 | 7.02 | 2.51 | 7.21 | 7.53 | 2.11 |
+| 3 | `muon mlr 5e-3` | 5.6174 | 7.03 | 7.11 | 2.41 | 7.28 | 7.62 | 2.24 |
+| 4 | `soap mlr 3e-3` | 6.2485 | 7.71 | 7.79 | 3.16 | 7.77 | 8.13 | 2.94 |
+| 5 | `shampoo mlr 1e-2` | 6.3104 | 8.05 | 8.14 | 2.52 | 8.09 | 8.46 | 2.61 |
+| 6 | `shampoo mlr 3e-3` | 6.3210 | 8.07 | 8.16 | 2.51 | 8.11 | 8.48 | 2.60 |
+| 7 | `adamw 5e-4` | 8.7507 | 10.20 | 10.31 | 6.20 | 9.83 | 10.25 | 5.72 |
+| — | `adamw 1e-3` | diverged | | | | | | |
+
+Four things fall out of this:
+
+1. **Second-order methods win by a wide margin.** SOAP and Muon beat AdamW by 3.2 nats on
+   every one of the six tasks.
+2. **AdamW at 1e-3 diverges.** When warmup ends and the LR parks at its peak, `grad_norm`
+   goes 272 → 45,610 despite clipping at 1.0, and every dev curve reverses. At 5e-4 it
+   survives but oscillates: its final losses sit 0.4–3.0 nats above its own best.
+3. **Muon is stable and flat.** `grad_norm` stays at 1–2 for the whole run, and 5e-3 and
+   1e-2 land 0.064 apart. Shampoo is flat too, 3e-3 and 1e-2 within 0.01, and sits ~0.9
+   nats behind.
+4. **Larger batch did not want larger LRs.** SOAP peaks at 1e-3 and degrades above it at
+   both batch sizes tried, which is why the open question is below 1e-3, not above.
+
+**Screening run.** 16 configs over FLEURS alone at 48 blocks/step, ~27% of an epoch. It
+picked the configurations above. Its ranking held for SOAP (first at both scales) and
+broke everywhere else: AdamW's 1.2-nat gap to Muon became 3.2, and the three leaders,
+0.03 apart in the screen, spread over 0.2. Screens at 1/43 of the batch order optimizers
+by luck.
 
 <img src="fleurs-ablation-tts.png" width="100%">
 <img src="fleurs-ablation-stt.png" width="100%">
@@ -215,9 +254,6 @@ separating only after ~50 steps, which a 100-step run at 1/43 of the batch canno
 
 ### TTS + STT + raw mel
 
-One run over all three tasks — TTS from audio tokens, STT from audio tokens, and STT
-from raw mel:
-
 ```bash
 # 0.6B
 bash 0.6B-mel.sh
@@ -226,14 +262,17 @@ bash 0.6B-mel.sh
 bash 1.7B-mel.sh
 ```
 
-The mix is a launch flag, not a property of the data — `--train_file` takes
-`dir:weight` entries where the weight is how many epochs of that pack go into one
-training epoch, so ratios change without repacking anything. The raw-mel pack stores
-audio *paths*, so `--audio_dir` must point at the extracted audio tree; the dataset reads
-and resamples the files in the dataloader workers and the STFT runs on the GPU.
+The mix is a launch flag, not a property of the data. `--train_file` takes `dir:weight`
+entries, where the weight is how many epochs of that pack go into one training epoch, so
+ratios change without repacking. The mel pack stores audio *paths*: point `--audio_dir` at
+the extracted audio tree. Files are read and resampled in the dataloader workers, and the
+STFT runs on the GPU.
 
-To smoke-test the whole thing without any real data — synthetic packs for all three
-tasks, built with the real tokenizer so every id is the id training would see:
+Weight the mel pack down on purpose. It makes micro-batches with no mel document common,
+which is the case that hangs DDP if the projector leaves the autograd graph.
+
+**Smoke test** — synthetic packs for all three tasks, built with the real tokenizer, so
+every id is the id training would see:
 
 ```bash
 python dryrun_pack.py --out /share/mel-dryrun
@@ -248,45 +287,41 @@ torchrun --nproc_per_node 2 -m qwen3_mel_adamw \
   --output_dir /share/mel-dryrun/out --logging_steps 1 --save_strategy no
 ```
 
-Weighting the mel pack down is deliberate: it makes micro-batches that contain no mel
-document common, which is the case that hangs DDP if the projector ever leaves the
-autograd graph.
+### Raw mel input
 
-**Raw mel input.** Audio reaches the LLM without a speech tokenizer and without a
-whisper *encoder* — only whisper's mel front end survives, and the LLM does the acoustic
-modelling itself:
+Audio reaches the LLM with no speech tokenizer and no whisper *encoder*. Only whisper's
+mel front end survives; the LLM does the acoustic modelling.
 
 ```
 waveform 16kHz
-  └─ whisper log-mel            100 fps, 128 bins   (feature extractor unchanged)
-      └─ stack 2 frames         [T/2, 256]
+  └─ whisper log-mel          100 fps, 128 bins   (feature extractor unchanged)
+      └─ stack 2 frames       [T/2, 256]
           └─ LayerNorm → Linear(256→H) → GELU → Linear(H→H)
               └─ 50 positions/s, written over the <|mel|> placeholder embeddings
 ```
 
-Stacking rather than pooling is the point: a reshape of 2 frames is information
-preserving and is exactly `Conv1d(128, H, kernel_size=2, stride=2)`, while an average
-pool pre-commits to one fixed mixing and low-passes away the ~10ms cues (plosive bursts,
-stop closures, onset edges) that separate phonemes. Qwen2-Audio can afford to pool
-because its stride-2 pool sits *after* 32 transformer layers that already made
-neighbouring positions redundant; with no encoder, adjacent mel frames are not
-redundant. 50 positions/s is also whisper's own encoder output rate, and the NeuCodec
-rate.
+Stack, don't pool. A reshape of 2 frames preserves information and equals
+`Conv1d(128, H, kernel_size=2, stride=2)`. An average pool commits to one fixed mixing and
+low-passes away the ~10ms cues — plosive bursts, stop closures, onset edges — that
+separate phonemes. Qwen2-Audio can pool because its stride-2 pool sits after 32 transformer
+layers that already made neighbouring positions redundant. With no encoder, adjacent mel
+frames are not redundant. 50 positions/s is also whisper's own encoder output rate, and the
+NeuCodec rate.
 
-Implementation: [mel_audio.py](mel_audio.py) and [qwen3_mel_adamw.py](qwen3_mel_adamw.py),
-tests in [stt/test_mel_pipeline.py](stt/test_mel_pipeline.py).
+Implementation: [mel_audio.py](mel_audio.py), [qwen3_mel_adamw.py](qwen3_mel_adamw.py).
+Tests: [stt/test_mel_pipeline.py](stt/test_mel_pipeline.py).
 
 ## Areas
 
 | area | what |
 |---|---|
-| [preparation](preparation/README.md) | multipacking: (text, speech-token) pairs → 10,240-token attention-isolated training blocks |
-| [stt](stt/README.md) | the inverse task, two packs of it: NeuCodec tokens, and raw whisper log-mel at the same 50 positions/s |
-| [fleurs-dataset](fleurs-dataset/README.md) | FLEURS-R + NeuCodec tokens for 102 locales, the corpus the ablation above trains on |
-| [low-language-testset](low-language-testset/README.md) | the long-tail test set above |
+| [preparation](preparation/README.md) | multipacking: (text, speech-token) pairs → 10,240-token attention-isolated blocks |
+| [stt](stt/README.md) | the inverse task, in two packs: NeuCodec tokens and raw log-mel |
+| [fleurs-dataset](fleurs-dataset/README.md) | FLEURS-R + NeuCodec tokens for 102 locales, and the speaker labels derived for it |
+| [low-language-testset](low-language-testset/README.md) | the long-tail test set |
 | [nonverbal-tagging](nonverbal-tagging/README.md) | non-verbal event mining into inline tags |
 | [synthetic-description](synthetic-description/README.md) | expressive-TTS descriptions: acoustic stats + classifiers → LLM summary |
-| [dnsmos](dnsmos/README.md) | DNSMOS quality filtering of the training corpora |
+| [dnsmos](dnsmos/README.md) | DNSMOS quality filtering |
 | [tts-evaluation](tts-evaluation/README.md), [vc-evaluation](vc-evaluation/README.md) | the 76-language benchmarks (V1) |
 
 ## Acknowledgements
