@@ -26,7 +26,7 @@
 #   bash ablation-fleurs.sh --optimizers muon      # subset
 #   bash ablation-fleurs.sh --dry-run              # print commands only
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # run from the repo root
 unset LD_LIBRARY_PATH PYTHONPATH        # login shells poison the venv's torch (see CLAUDE.md)
 set -a; . ./.env; set +a
 export HF_HOME="${HF_HOME:-/share/multilingual-tts/hf}"
@@ -45,7 +45,7 @@ AUDIO="${AUDIO:-/share/audio-root}"
   --validation-file "fleurs_tts=$F/fleurs-tts-dev,fleurs_stt=$F/fleurs-stt-dev,fleurs_mel=$F/fleurs-mel-dev,cv22_tts=$C/cv22-tts-dev,cv22_stt=$C/cv22-stt-dev,cv22_mel=$C/cv22-mel-dev" \
   --added-tokens-file "${TOKENS:-/share/cv22/out/added_tokens.json}" \
   --audio-dir "$AUDIO" \
-  --grid-json "${GRID:-ablation-fleurs-grid.json}" \
+  --grid-json "${GRID:-scripts/ablation-fleurs-grid.json}" \
   --run-prefix "${PREFIX:-fleurs-b2048}" \
   --output-root "$BASE/runs/${PREFIX:-fleurs-b2048}" \
   --state-dir "$BASE/search_state/${PREFIX:-fleurs-b2048}" \
