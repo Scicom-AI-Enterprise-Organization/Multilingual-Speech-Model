@@ -107,7 +107,7 @@ Uses [Qwen/Qwen2.5-72B-Instruct](https://deepinfra.com/Qwen/Qwen2.5-72B-Instruct
 5. Run on Qwen3 1.7B Base only
 6. **AdamW performed better**
 
-<img src="one-epoch.png" width="50%">
+<img src="docs/one-epoch.png" width="50%">
 
 ### Hyperparameter Search
 
@@ -119,10 +119,10 @@ One-epoch results used conservative learning rates, so we ran a focused search:
 4. Run on Qwen3 1.7B Base only
 5. Grid search over AdamW LR, Muon LR, and decay rate
 6. Aggressive LRs (AdamW 1e-3, Muon 1e-2, decay 0.01) turned out best
-7. AdamW-only with the same aggressive LR — [1.7B-adamw-aggresive.sh](1.7B-adamw-aggresive.sh)
+7. AdamW-only with the same aggressive LR — [1.7B-adamw-aggresive.sh](scripts/1.7B-adamw-aggresive.sh)
 8. **Adding Muon performed better**
 
-<img src="hyperparameter-search.png" width="50%">
+<img src="docs/hyperparameter-search.png" width="50%">
 
 ## Training
 
@@ -130,20 +130,20 @@ One-epoch results used conservative learning rates, so we ran a focused search:
 
 ```bash
 # 0.6B
-bash 0.6B.sh
+bash scripts/0.6B.sh
 
 # 1.7B
-bash 1.7B.sh
+bash scripts/1.7B.sh
 ```
 
 ### Expressive TTS
 
 ```bash
 # 0.6B
-bash 0.6B-expressive.sh
+bash scripts/0.6B-expressive.sh
 
 # 1.7B
-bash 1.7B-expressive.sh
+bash scripts/1.7B-expressive.sh
 ```
 
 ## WandB

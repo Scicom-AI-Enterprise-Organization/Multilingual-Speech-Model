@@ -204,8 +204,8 @@ python preparation/multipacking_cv22.py --base-dir <cv22> --task all --workers 9
 python preparation/multipacking_fleurs.py --base-dir <base> --task all \
     --added-tokens-file <cv22>/out/added_tokens.json --audio-base <audio>
 bash preparation/link_audio_root.sh      # one audio root for both corpora
-PREFIX=fleurs-b2040 bash ablation-fleurs.sh
-python plot_fleurs_ablation.py
+PREFIX=fleurs-b2040 bash scripts/ablation-fleurs.sh
+python plot_fleurs_ablation.py --out-dir docs
 ```
 
 **Protocol.** Qwen3-1.7B-Base, 21M tokens/step, warmup 50, FP32-BF16, WSD LR, 200 steps.
@@ -218,13 +218,13 @@ Two departures from V1:
 
 Ten configurations ran. Nine finished; `adamw 1e-3` diverged.
 
-<img src="fleurs-ablation-heatmap.png" width="100%">
+<img src="docs/fleurs-ablation-heatmap.png" width="100%">
 
 Colour is scaled within each column, because the tasks do not share a scale: TTS and
 token-STT predict into 65,536 speech tokens, the mel tasks predict text. Runs rank on the
-mean so no single scale decides the order. Full table: [fleurs-ablation-results.md](fleurs-ablation-results.md).
+mean so no single scale decides the order. Full table: [docs/fleurs-ablation-results.md](docs/fleurs-ablation-results.md).
 
-<img src="fleurs-ablation-curves.png" width="100%">
+<img src="docs/fleurs-ablation-curves.png" width="100%">
 
 ##### What the sweep says
 
@@ -246,13 +246,13 @@ mean so no single scale decides the order. Full table: [fleurs-ablation-results.
 6. **The screen mis-ranked everything except SOAP.** 16 configs at 48 blocks/step put the
    three leaders within 0.03 and AdamW 1.2 nats back. At the real batch the leaders spread
    over 0.26 and AdamW falls 3.3 behind. Screens at 1/43 of the batch order optimizers by
-   luck. The screen numbers are kept in [fleurs-screen-48blocks.md](fleurs-screen-48blocks.md).
+   luck. The screen numbers are kept in [docs/fleurs-screen-48blocks.md](docs/fleurs-screen-48blocks.md).
 
 ##### Can one model learn all three tasks from this much data?
 
 Yes. The best run's six dev losses all fall monotonically, from one mixture, in 200 steps.
 
-<img src="fleurs-ablation-best-run.png" width="100%">
+<img src="docs/fleurs-ablation-best-run.png" width="100%">
 
 | task | step 25 | step 200 | drop | perplexity |
 |---|---:|---:|---:|---:|
@@ -284,10 +284,10 @@ Three qualifications:
 
 ```bash
 # 0.6B
-bash 0.6B-mel.sh
+bash scripts/0.6B-mel.sh
 
 # 1.7B
-bash 1.7B-mel.sh
+bash scripts/1.7B-mel.sh
 ```
 
 The mix is a launch flag, not a property of the data. `--train_file` takes `dir:weight`

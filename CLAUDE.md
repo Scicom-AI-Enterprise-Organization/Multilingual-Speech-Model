@@ -14,7 +14,8 @@ Put new work in `README.md` or an area README, not back into V1.
 
 | Path | What it is |
 |---|---|
-| `*.sh` (`1.7B.sh`, `0.6B-vc.sh`, `1.7B-expressive.sh`, …) | torchrun launch scripts per model/stage; pair with `qwen3_*.py` trainers (AdamW vs Muon+AdamW, WSD LR) |
+| `scripts/` | torchrun launch scripts per model/stage (`1.7B.sh`, `0.6B-vc.sh`, `1.7B-mel.sh`, `ablation-fleurs.sh`, …). They run `-m qwen3_*` from the repo root, so invoke them as `bash scripts/<name>.sh` from there |
+| `docs/` | figures and result tables the READMEs embed |
 | `qwen3_adamw.py`, `qwen3_muonadamw*.py` | trainers; `_post` = post-training variant |
 | `dryrun_pack.py` | synthetic packs for all three tasks (real tokenizer ids, real audio files, random content) — smoke-tests the trainer end to end with no dataset. See README_V1 "TTS + STT + raw mel" |
 | `mel_audio.py` + `qwen3_mel_adamw.py` | **raw-mel audio input** (no whisper encoder — only its mel front end): log-mel 100 fps → stack 2 frames → LayerNorm+MLP → the embeddings behind `<|mel|>` placeholders. Trains all three tasks in one run (TTS tokens / STT tokens / STT mel) via weighted `--train_file "dir:weight,…"`. Tests: `stt/test_mel_pipeline.py` |

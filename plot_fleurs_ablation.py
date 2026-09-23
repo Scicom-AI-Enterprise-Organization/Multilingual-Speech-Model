@@ -13,7 +13,7 @@ axis: TTS predicts 65k-way speech tokens, the STT tasks predict text. Columns ar
 normalised independently and the curves get one panel each.
 
 To change style:  edit the STYLE dict.
-To re-run:        python plot_fleurs_ablation.py --state-dir <sweep state> --out-dir .
+To re-run:        python plot_fleurs_ablation.py --state-dir <sweep state> --out-dir docs
 """
 
 import argparse
@@ -377,7 +377,7 @@ def main():
     p.add_argument('--state-dir', default='/share/multilingual-tts/search_state/fleurs-b2040')
     p.add_argument('--runs-root', default='/share/multilingual-tts/runs/fleurs-b2040')
     p.add_argument('--run-prefix', default='fleurs-b2040')
-    p.add_argument('--out-dir', default='.')
+    p.add_argument('--out-dir', default='docs')
     p.add_argument('--title', default='### FLEURS-R + Common Voice 22 — optimizer ablation '
                                       '(2048-block batch, 200 steps)')
     args = p.parse_args()
