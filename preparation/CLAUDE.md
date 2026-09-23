@@ -19,6 +19,15 @@ TTS/expressive variants and still write mosaicml MDS.
     — no `_trim` in the folder name even though the tokens came from trimmed audio
     (`path_style='neucodec'` in the spec). It also has **no**
     `audio_length_ratio_text` reject config.
+- **`Scicom-intl/Malaysian-Emilia` feeds two packs, and they do not overlap.**
+  `malaysian-emilia` reads the `default` config (8.66M pairs: parlimen 4.08M,
+  malaysian-chinese 2.07M, malaysian-podcast 1.44M, sg-podcast 0.90M, cartoon 0.14M,
+  klasik 0.03M) and `malaysian-emilia-dialects` reads `dialects_v1_permutation_sample`
+  (4.96M pairs, all `dialects_processed`). `default` holds no `dialects_processed` rows,
+  so no dedup between them is needed. The overlap that *is* real is
+  `malaysian-chinese_processed` — 2.07M rows of `default` and also the whole
+  `malaysian-chinese-emilia` pack — which is why that spec carries
+  `skip_prefix='malaysian-chinese'`. **Don't remove it**, or 2.07M pairs get packed twice.
 - Every pair row is dropped if either side is in the reject list, its JSON is missing,
   or `len(text.split()) > len(speech_tokens)`. Drop counts land in
   `out/<name>/summary.json` — sanity-check `missing` is near zero; a huge `missing`

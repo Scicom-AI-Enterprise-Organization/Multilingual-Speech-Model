@@ -25,6 +25,27 @@ counts sit slightly below):
 | `emilia-yodas` | [Emilia-YODAS-Voice-Conversion](https://huggingface.co/datasets/Scicom-intl/Emilia-YODAS-Voice-Conversion) (default) | `audio_length_ratio_text` | 1,902,702 | ~19.48B | `Scicom-intl/Emilia-YODAS-multipacking-10k` |
 | **total** | | | **3,646,600** | **~37.3B** | |
 
+#### Two packs share one repo — and do not overlap
+
+`malaysian-emilia` and `malaysian-emilia-dialects` both read `Scicom-intl/Malaysian-Emilia`,
+but they are **disjoint configs over disjoint audio folders** (full column census, not a
+sample):
+
+| pack | config | pair rows | audio folders |
+|---|---|---:|---|
+| `malaysian-emilia` | `default` | 8,664,602 | `parlimen-24k-chunk_processed` 4,075,911 · `malaysian-chinese_processed` 2,074,651 · `malaysian-podcast_processed` 1,438,798 · `sg-podcast_processed` 900,733 · `cartoon-24k_processed` 143,656 · `klasik_processed` 30,853 |
+| `malaysian-emilia-dialects` | `dialects_v1_permutation_sample` | 4,963,410 | `dialects_processed` 4,963,410 |
+
+`default` holds **no** `dialects_processed` rows, and every pair's reference and target sit
+in the same folder, so neither pack can contain the other's audio.
+
+The one real overlap is `malaysian-chinese_processed`: it is 2.07M rows of `default` **and**
+the whole of the separate `malaysian-chinese-emilia` pack (same folder, same audio, from
+`Scicom-intl/Malaysian-Chinese-Emilia`). That is what `skip_prefix='malaysian-chinese'`
+drops — and the block count shows it took effect: 6.59M pairs after the skip → 775,589
+blocks ≈ 8.5 pairs/block, in line with the dialects pack's 8.8; packing all 8.66M rows
+would have produced ~985K blocks.
+
 ### What it does
 
 Per dataset:
