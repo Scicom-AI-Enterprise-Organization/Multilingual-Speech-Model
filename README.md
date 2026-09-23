@@ -156,9 +156,13 @@ the FLEURS sweep below uses one. Name every sweep with `PREFIX`: run names carry
 the optimizer and LRs but not the batch size, so two sweeps at different batches share
 resume markers and the second one silently reprints the first one's ranking.
 
-#### FLEURS-R + Common Voice 22
+#### FLEURS-R + Common Voice 22 — optimizer ablation
 
-One run trains on all three tasks at once, then each task is scored on its own dev split.
+**Question.** Which optimizer trains a model that does all three tasks at once, and does
+a small corpus even support that?
+
+**Setup.** One run trains on a mixture of all six packs. Each task is then scored on its
+own dev split.
 
 ```
  fleurs-tts  ┐                                              ┌ eval_fleurs_tts
@@ -182,14 +186,15 @@ One run trains on all three tasks at once, then each task is scored on its own d
   102 locales, 248,117 train and 31,378 dev utterances.
 - **Common Voice 22** — the filtered 6,921,399 rows of `common-voice-22` in
   [malaysia-ai/Multilingual-TTS](https://huggingface.co/datasets/malaysia-ai/Multilingual-TTS),
-  29.1% of raw CV22. Tokens and audio come from
+  29.1% of raw CV22. Tokens and audio from
   [malaysia-ai/common_voice_22_0](https://huggingface.co/datasets/malaysia-ai/common_voice_22_0).
-  130 language tags, ~1.7B tokens per task.
 
 All six packs cover the same rows, so only the representation and the direction change.
+5.75B tokens total. A 200-step run sees 4.2B of them, so nothing is replayed.
+
 CV22 adds 130 language tags to FLEURS' 102, and the mel tokens are appended after the
-language tags. Packing the corpora separately would therefore shift `<|mel|>`'s id between
-them, so both packers read one shared 236-token list.
+language tags. Packing the corpora separately would shift `<|mel|>`'s id between them, so
+both packers read one shared 236-token list.
 
 ```bash
 python preparation/multipacking_cv22.py --base-dir <cv22> --stage tokens-file
@@ -199,8 +204,8 @@ python preparation/multipacking_cv22.py --base-dir <cv22> --task all --workers 9
 python preparation/multipacking_fleurs.py --base-dir <base> --task all \
     --added-tokens-file <cv22>/out/added_tokens.json --audio-base <audio>
 bash preparation/link_audio_root.sh      # one audio root for both corpora
-bash ablation-fleurs.sh
-python plot_fleurs_ablation.py           # one figure per task
+PREFIX=fleurs-b2040 bash ablation-fleurs.sh
+python plot_fleurs_ablation.py
 ```
 
 **Protocol.** Qwen3-1.7B-Base, 21M tokens/step, warmup 50, FP32-BF16, WSD LR, 200 steps.
@@ -211,44 +216,67 @@ Two departures from V1:
 | steps | 100 | 200 | the V1 winner separates only after ~step 50 and is still descending at 100 |
 | batch shape | 8 × 32 | 4 × 64 | micro-batch 8 peaks a rank at 143,137 MiB of a 143,771 MiB card |
 
-Dev losses are never averaged across tasks in a plot: TTS predicts 65k-way speech tokens,
-the STT tasks predict text. Runs rank on the mean so no single scale decides the order.
+Ten configurations ran. Nine finished; `adamw 1e-3` diverged.
 
-**Results** (9 of 10 runs; `soap 5e-4` in flight, `soap 1e-4` queued):
+<img src="fleurs-ablation-heatmap.png" width="100%">
 
-| rank | run | mean dev | f_tts | f_stt | f_mel | c_tts | c_stt | c_mel |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| 1 | `soap mlr 1e-3` | **5.4178** | 6.72 | 6.80 | 2.47 | 7.00 | 7.34 | 2.18 |
-| 2 | `muon mlr 1e-2` | 5.5534 | 6.94 | 7.02 | 2.51 | 7.21 | 7.53 | 2.11 |
-| 3 | `muon mlr 5e-3` | 5.6174 | 7.03 | 7.11 | 2.41 | 7.28 | 7.62 | 2.24 |
-| 4 | `soap mlr 3e-3` | 6.2485 | 7.71 | 7.79 | 3.16 | 7.77 | 8.13 | 2.94 |
-| 5 | `shampoo mlr 1e-2` | 6.3104 | 8.05 | 8.14 | 2.52 | 8.09 | 8.46 | 2.61 |
-| 6 | `shampoo mlr 3e-3` | 6.3210 | 8.07 | 8.16 | 2.51 | 8.11 | 8.48 | 2.60 |
-| 7 | `adamw 5e-4` | 8.7507 | 10.20 | 10.31 | 6.20 | 9.83 | 10.25 | 5.72 |
-| — | `adamw 1e-3` | diverged | | | | | | |
+Colour is scaled within each column, because the tasks do not share a scale: TTS and
+token-STT predict into 65,536 speech tokens, the mel tasks predict text. Runs rank on the
+mean so no single scale decides the order. Full table: [fleurs-ablation-results.md](fleurs-ablation-results.md).
 
-Four things fall out of this:
+<img src="fleurs-ablation-curves.png" width="100%">
 
-1. **Second-order methods win by a wide margin.** SOAP and Muon beat AdamW by 3.2 nats on
-   every one of the six tasks.
-2. **AdamW at 1e-3 diverges.** When warmup ends and the LR parks at its peak, `grad_norm`
-   goes 272 → 45,610 despite clipping at 1.0, and every dev curve reverses. At 5e-4 it
-   survives but oscillates: its final losses sit 0.4–3.0 nats above its own best.
-3. **Muon is stable and flat.** `grad_norm` stays at 1–2 for the whole run, and 5e-3 and
-   1e-2 land 0.064 apart. Shampoo is flat too, 3e-3 and 1e-2 within 0.01, and sits ~0.9
-   nats behind.
-4. **Larger batch did not want larger LRs.** SOAP peaks at 1e-3 and degrades above it at
-   both batch sizes tried, which is why the open question is below 1e-3, not above.
+##### What the sweep says
 
-**Screening run.** 16 configs over FLEURS alone at 48 blocks/step, ~27% of an epoch. It
-picked the configurations above. Its ranking held for SOAP (first at both scales) and
-broke everywhere else: AdamW's 1.2-nat gap to Muon became 3.2, and the three leaders,
-0.03 apart in the screen, spread over 0.2. Screens at 1/43 of the batch order optimizers
-by luck.
+1. **Second-order methods win by a wide margin.** SOAP and Muon beat the best AdamW by
+   3.2–3.3 nats on every one of the six tasks. Nothing about that is marginal.
+2. **AdamW at the V1 aggressive LR diverges.** When warmup ends and the LR parks at its
+   1e-3 peak, `grad_norm` goes 272 → 45,610 despite clipping at 1.0, and every dev curve
+   reverses. At 5e-4 it survives but oscillates — its final losses sit 0.4–3.0 nats above
+   its own best. The red lines in the figure above are that failure.
+3. **The leaders are flat in LR, so the choice is not delicate.** SOAP is within 0.02
+   across 5e-4 → 1e-3; Muon within 0.06 across 5e-3 → 1e-2; Shampoo within 0.01 across
+   3e-3 → 1e-2. Pick anything in the band.
+4. **A bigger batch did not want a bigger LR.** SOAP peaks at 1e-3 and degrades both above
+   it (3e-3 costs 0.83) and below it (1e-4 costs 0.26), at both batch sizes tried. The
+   usual scaling intuition does not hold here.
+5. **The best optimizer is task-dependent at the margins.** SOAP 1e-3 wins four tasks,
+   SOAP 1e-4 wins FLEURS mel, Muon 1e-2 wins CV22 mel. Lower LRs favour the mel tasks.
+   A single averaged number hides this, which is why every task gets its own column.
+6. **The screen mis-ranked everything except SOAP.** 16 configs at 48 blocks/step put the
+   three leaders within 0.03 and AdamW 1.2 nats back. At the real batch the leaders spread
+   over 0.26 and AdamW falls 3.3 behind. Screens at 1/43 of the batch order optimizers by
+   luck. The screen numbers are kept in [fleurs-screen-48blocks.md](fleurs-screen-48blocks.md).
 
-<img src="fleurs-ablation-tts.png" width="100%">
-<img src="fleurs-ablation-stt.png" width="100%">
-<img src="fleurs-ablation-mel.png" width="100%">
+##### Can one model learn all three tasks from this much data?
+
+Yes. The best run's six dev losses all fall monotonically, from one mixture, in 200 steps.
+
+<img src="fleurs-ablation-best-run.png" width="100%">
+
+| task | step 25 | step 200 | drop | perplexity |
+|---|---:|---:|---:|---:|
+| FLEURS TTS | 9.617 | 6.717 | 2.900 | 826 |
+| FLEURS STT | 9.711 | 6.798 | 2.913 | 896 |
+| FLEURS STT-mel | 2.968 | 2.467 | 0.501 | 11.8 |
+| CV22 TTS | 9.432 | 7.005 | 2.428 | 1,102 |
+| CV22 STT | 9.855 | 7.340 | 2.515 | 1,540 |
+| CV22 STT-mel | 3.150 | 2.179 | 0.971 | 8.8 |
+
+Read against the uniform baselines: speech-token prediction starts from ln(65,536) = 11.09
+nats and ends at 6.72, so perplexity drops from 65,536 to 826. Text from raw mel ends at
+8.8–11.8 perplexity against a 217,448-token vocabulary. No task is starved by the others.
+
+Three qualifications:
+
+- **Not converged.** The token tasks still drop ~0.10 nats per 25 steps at step 200.
+  4.2B tokens buys a clear signal, not a finished model.
+- **The mel number is not comparable to the token-STT number.** `<|mel|>` placeholders are
+  masked out of the labels, since audio is an input, not a prediction target. So the mel
+  task scores text only, while token-STT also scores the ~90% of positions that are speech
+  tokens. A codec-vs-mel comparison needs a text-only metric on the token side.
+- **FLEURS mel flattens after step 100 while CV22 mel keeps falling.** FLEURS is 9.6% of
+  the mixture. The small corpus rides along on the large one rather than driving it.
 
 ## Training
 
