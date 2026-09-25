@@ -224,6 +224,15 @@ Colour is scaled within each column, because the tasks do not share a scale: TTS
 token-STT predict into 65,536 speech tokens, the mel tasks predict text. Runs rank on the
 mean so no single scale decides the order. Full table: [docs/fleurs-ablation-results.md](docs/fleurs-ablation-results.md).
 
+**Live curves:** [wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS](https://wandb.ai/aies-scicom-scicom-ai/Multilingual-TTS)
+— every run logs `eval_fleurs_{tts,stt,mel}_loss` and `eval_cv22_{tts,stt,mel}_loss`
+separately, plus train loss and grad-norm per step.
+
+| sweep | run names | what it is |
+|---|---|---|
+| this one | `fleurs-b2040-*` | 10 configs, 2040-block batch, 200 steps |
+| the screen | `fleurs-*` (no `b2040`) | 16 configs, 48-block batch, 100 steps |
+
 <img src="docs/fleurs-ablation-curves.png" width="100%">
 
 ##### What the sweep says
