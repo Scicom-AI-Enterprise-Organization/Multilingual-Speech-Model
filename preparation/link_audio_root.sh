@@ -8,9 +8,9 @@
 #
 #   bash preparation/link_audio_root.sh [root] [fleurs_audio] [cv22_audio]
 set -e
-ROOT="${1:-/share/audio-root}"
-FLEURS="${2:-/share/fleurs-work/audio}"
-CV22="${3:-/share/cv22/audio}"
+ROOT="${1:-/root/share/audio-root}"
+FLEURS="${2:-/root/share/fleurs-work/audio}"
+CV22="${3:-/root/share/cv22/audio}"
 
 mkdir -p "$ROOT/audio"
 linked=0

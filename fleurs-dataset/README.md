@@ -64,7 +64,7 @@ Use them as consistent voice tags for conditioning, not as verified identities.
 ## Running it (reference box)
 
 Same shared GPU box the multipacking runs on (see [preparation](../preparation/CLAUDE.md)),
-work dir `/share/fleurs-work` (venv, `emb/`, `speakers/`, `data/`). `unset LD_LIBRARY_PATH`
+work dir `/root/share/fleurs-work` (venv, `emb/`, `speakers/`, `data/`). `unset LD_LIBRARY_PATH`
 first, and uploads need a **write** `HF_TOKEN` — the one in the repo `.env` is read-only/stale.
 
 The TitaNet vectors under `emb/` are the expensive artifact (~1.5h of 12-worker CPU for

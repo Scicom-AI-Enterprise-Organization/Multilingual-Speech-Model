@@ -19,7 +19,7 @@ reset to 0 and `attention_mask` holds the per-document lengths that the
 trainers expand into a block-diagonal mask.
 
 Usage:
-    python multipacking.py all --base-dir /share/multipacking --workers 96
+    python multipacking.py all --base-dir /root/share/multipacking --workers 96
     python multipacking.py malaysian-tamil-emilia youtube-cantonese-emilia
     python multipacking.py all --stage download   # only fetch/extract zips
     python multipacking.py all --stage pack       # assume zips are extracted
@@ -368,7 +368,7 @@ def upload(spec, base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('datasets', nargs='+', help=f'"all" or any of: {", ".join(DATASETS)}')
-    parser.add_argument('--base-dir', default='/share/multipacking')
+    parser.add_argument('--base-dir', default='/root/share/multipacking')
     parser.add_argument('--workers', type=int, default=max(1, (os.cpu_count() or 8) // 2))
     parser.add_argument('--stage', choices=['download', 'pack', 'upload', 'all'], default='all',
                         help='"upload" pushes existing out/ dirs without re-packing')

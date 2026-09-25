@@ -325,7 +325,7 @@ def test_mixture_index():
 def test_parse_train_files():
     assert parse_train_files('a,b') == [('a', 1.0), ('b', 1.0)]
     assert parse_train_files('a:2.0, b:0.5') == [('a', 2.0), ('b', 0.5)]
-    assert parse_train_files('/share/x/tts:1.5') == [('/share/x/tts', 1.5)]
+    assert parse_train_files('/root/share/x/tts:1.5') == [('/root/share/x/tts', 1.5)]
     assert parse_train_files('hf://user/set') == [('hf://user/set', 1.0)]
 
 

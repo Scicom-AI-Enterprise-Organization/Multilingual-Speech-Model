@@ -23,9 +23,9 @@ attention-isolated documents (per-doc position_ids reset, attention_mask = per-d
 lengths).
 
 Usage:
-    python multipacking_stt.py --base-dir /share/stt --workers 96          # everything, one wave
-    python multipacking_stt.py --base-dir /share/stt --subsets 'malaysian-*' 'emilia_zh'
-    python multipacking_stt.py --base-dir /share/stt --stage download      # zips + metadata only
+    python multipacking_stt.py --base-dir /root/share/stt --workers 96          # everything, one wave
+    python multipacking_stt.py --base-dir /root/share/stt --subsets 'malaysian-*' 'emilia_zh'
+    python multipacking_stt.py --base-dir /root/share/stt --stage download      # zips + metadata only
 
     # disk-bounded full run: ~177GB of token JSONs + ~270GB packed output do not
     # fit at once, so process in waves (upload + free between waves):
@@ -417,7 +417,7 @@ def upload(base):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--base-dir', default='/share/stt')
+    parser.add_argument('--base-dir', default='/root/share/stt')
     parser.add_argument('--subsets', nargs='*', default=None,
                         help='fnmatch patterns of subset names (default: all)')
     parser.add_argument('--num-waves', type=int, default=1,

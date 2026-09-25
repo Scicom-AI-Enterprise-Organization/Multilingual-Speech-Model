@@ -374,8 +374,8 @@ def write_table(runs, tasks, out_dir, title):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--state-dir', default='/share/multilingual-tts/search_state/fleurs-b2040')
-    p.add_argument('--runs-root', default='/share/multilingual-tts/runs/fleurs-b2040')
+    p.add_argument('--state-dir', default='/root/share/multilingual-tts/search_state/fleurs-b2040')
+    p.add_argument('--runs-root', default='/root/share/multilingual-tts/runs/fleurs-b2040')
     p.add_argument('--run-prefix', default='fleurs-b2040')
     p.add_argument('--out-dir', default='docs')
     p.add_argument('--title', default='### FLEURS-R + Common Voice 22 — optimizer ablation '

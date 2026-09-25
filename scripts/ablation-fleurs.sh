@@ -29,21 +29,21 @@ set -e
 cd "$(dirname "$0")/.."   # run from the repo root
 unset LD_LIBRARY_PATH PYTHONPATH        # login shells poison the venv's torch (see CLAUDE.md)
 set -a; . ./.env; set +a
-export HF_HOME="${HF_HOME:-/share/multilingual-tts/hf}"
+export HF_HOME="${HF_HOME:-/root/share/multilingual-tts/hf}"
 export HF_HUB_DISABLE_XET=1
 export TOKENIZERS_PARALLELISM=false
 
-BASE="${BASE:-/share/multilingual-tts}"
+BASE="${BASE:-/root/share/multilingual-tts}"
 F="$BASE/fleurs/out"                       # FLEURS packs
-C="${CV22:-/share/cv22/out}"               # Common Voice 22 packs
+C="${CV22:-/root/share/cv22/out}"               # Common Voice 22 packs
 # mel packs store audio paths; this root holds both corpora's audio (symlinked per
 # language, which never collide: FLEURS uses en_us-style tags, CV22 plain en)
-AUDIO="${AUDIO:-/share/audio-root}"
+AUDIO="${AUDIO:-/root/share/audio-root}"
 
 "$BASE/venv/bin/python" hyperparameter_search.py \
   --train-file "$F/fleurs-tts,$F/fleurs-stt,$F/fleurs-mel,$C/cv22-tts,$C/cv22-stt,$C/cv22-mel" \
   --validation-file "fleurs_tts=$F/fleurs-tts-dev,fleurs_stt=$F/fleurs-stt-dev,fleurs_mel=$F/fleurs-mel-dev,cv22_tts=$C/cv22-tts-dev,cv22_stt=$C/cv22-stt-dev,cv22_mel=$C/cv22-mel-dev" \
-  --added-tokens-file "${TOKENS:-/share/cv22/out/added_tokens.json}" \
+  --added-tokens-file "${TOKENS:-/root/share/cv22/out/added_tokens.json}" \
   --audio-dir "$AUDIO" \
   --grid-json "${GRID:-scripts/ablation-fleurs-grid.json}" \
   --run-prefix "${PREFIX:-fleurs-b2048}" \

@@ -3,11 +3,11 @@
 # -> free shards between waves, first-half token JSONs freed before wave 4, final
 # index merge + upload at the end. Resumable: finished waves carry a .uploaded marker.
 set -e
-cd /share/stt
+cd /root/share/stt
 unset LD_LIBRARY_PATH PYTHONPATH
 set -a; . ./.env; set +a
-export HF_HOME=/share/stt/hf
-PY=/share/multipacking/venv/bin/python
+export HF_HOME=/root/share/stt/hf
+PY=/root/share/multipacking/venv/bin/python
 OUT=out/multipacking-stt
 
 for w in 0 1 2 3 4 5 6 7; do

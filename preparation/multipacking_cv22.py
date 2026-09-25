@@ -391,8 +391,8 @@ def wanted_audio_members(files, splits):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--base-dir', default='/share/cv22')
-    parser.add_argument('--fleurs-data', default='/share/multilingual-tts/fleurs/data',
+    parser.add_argument('--base-dir', default='/root/share/cv22')
+    parser.add_argument('--fleurs-data', default='/root/share/fleurs/data',
                         help='FLEURS metadata dir, read only to collect its locale tags')
     parser.add_argument('--added-tokens-file', default=None,
                         help='shared token list (default: <base>/out/added_tokens.json)')

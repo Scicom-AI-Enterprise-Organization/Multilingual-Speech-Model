@@ -37,7 +37,7 @@ both packs. The appended list lands in <out>/fleurs_stt_added_tokens.json — th
 trainer must add the same tokens in the same order (`--added_tokens_file`).
 
 Usage:
-    python multipacking_fleurs.py --base-dir /share/multilingual-tts/fleurs --workers 96
+    python multipacking_fleurs.py --base-dir /root/share/fleurs --workers 96
     python multipacking_fleurs.py --stage download
     python multipacking_fleurs.py --task tts --locales 'en_us' 'ms_my'
 """
@@ -463,7 +463,7 @@ def pack(base, files, tasks, workers, suffix='', audio_base=None, added_tokens_f
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--base-dir', default='/share/multilingual-tts/fleurs')
+    parser.add_argument('--base-dir', default='/root/share/fleurs')
     parser.add_argument('--audio-base', default=None,
                         help='root the wavs live under (default: --base-dir). The mel pack stores '
                              'paths relative to it, and the trainer takes the same value as '

@@ -506,8 +506,8 @@ def stage_card(base, dry_run):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--base-dir', default='/share/fleurs-work')
-    parser.add_argument('--work-dir', default='/share/fleurs-work/scratch',
+    parser.add_argument('--base-dir', default='/root/share/fleurs-work')
+    parser.add_argument('--work-dir', default='/root/share/fleurs-work/scratch',
                         help='per-task scratch for tarballs/wavs/zips (deleted as it goes)')
     parser.add_argument('--stage', choices=['audio', 'cluster', 'parquet', 'card', 'all'], default='all')
     parser.add_argument('--locales', nargs='*', help='subset of locales (default: all in the repo)')

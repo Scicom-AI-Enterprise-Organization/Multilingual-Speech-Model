@@ -303,16 +303,16 @@ which is the case that hangs DDP if the projector leaves the autograd graph.
 every id is the id training would see:
 
 ```bash
-python dryrun_pack.py --out /share/mel-dryrun
+python dryrun_pack.py --out /root/share/mel-dryrun
 torchrun --nproc_per_node 2 -m qwen3_mel_adamw \
   --model_name_or_path Qwen/Qwen3-0.6B-Base \
-  --stt_tokens_file /share/mel-dryrun/stt_added_tokens.json \
-  --audio_dir /share/mel-dryrun/audio \
-  --train_file "/share/mel-dryrun/multipacking-tts:1.0,/share/mel-dryrun/multipacking-stt:1.0,/share/mel-dryrun/multipacking-stt-mel:0.3" \
+  --stt_tokens_file /root/share/mel-dryrun/stt_added_tokens.json \
+  --audio_dir /root/share/mel-dryrun/audio \
+  --train_file "/root/share/mel-dryrun/multipacking-tts:1.0,/root/share/mel-dryrun/multipacking-stt:1.0,/root/share/mel-dryrun/multipacking-stt-mel:0.3" \
   --block_size 10240 --max_steps 20 --do_train --bf16 --torch_dtype float32 \
   --per_device_train_batch_size 2 --gradient_checkpointing true \
   --ddp_find_unused_parameters false --remove_unused_columns false \
-  --output_dir /share/mel-dryrun/out --logging_steps 1 --save_strategy no
+  --output_dir /root/share/mel-dryrun/out --logging_steps 1 --save_strategy no
 ```
 
 ### Raw mel input

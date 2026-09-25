@@ -25,9 +25,9 @@ list and silently shift every id after it.
 
 Usage:
     # audio zips are the full corpus -- scope with --subsets and check df -h first
-    python multipacking_stt_mel.py --base-dir /share/stt-mel --subsets 'malaysian-*' 'emilia_zh'
-    python multipacking_stt_mel.py --base-dir /share/stt-mel --subsets '...' --stage download
-    python multipacking_stt_mel.py --base-dir /share/stt-mel --stage upload
+    python multipacking_stt_mel.py --base-dir /root/share/stt-mel --subsets 'malaysian-*' 'emilia_zh'
+    python multipacking_stt_mel.py --base-dir /root/share/stt-mel --subsets '...' --stage download
+    python multipacking_stt_mel.py --base-dir /root/share/stt-mel --stage upload
 """
 
 import os
@@ -394,7 +394,7 @@ def upload(base):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--base-dir', default='/share/stt-mel')
+    parser.add_argument('--base-dir', default='/root/share/stt-mel')
     parser.add_argument('--subsets', nargs='*', default=None,
                         help='fnmatch patterns of subset names (default: all — the full audio corpus)')
     parser.add_argument('--stt-tokens', default=None,

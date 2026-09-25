@@ -16,12 +16,12 @@ mel scatter lands, and — with more than one rank — that a micro-batch holdin
 document does not hang the all-reduce. Weight the mel pack *down* in --train_file to
 make those mel-free micro-batches common.
 
-    python dryrun_pack.py --out /share/mel-dryrun
+    python dryrun_pack.py --out /root/share/mel-dryrun
     torchrun --nproc_per_node 2 -m qwen3_mel_adamw \\
       --model_name_or_path Qwen/Qwen3-0.6B-Base \\
-      --stt_tokens_file /share/mel-dryrun/stt_added_tokens.json \\
-      --audio_dir /share/mel-dryrun/audio \\
-      --train_file "/share/mel-dryrun/multipacking-tts:1.0,/share/mel-dryrun/multipacking-stt:1.0,/share/mel-dryrun/multipacking-stt-mel:0.3" \\
+      --stt_tokens_file /root/share/mel-dryrun/stt_added_tokens.json \\
+      --audio_dir /root/share/mel-dryrun/audio \\
+      --train_file "/root/share/mel-dryrun/multipacking-tts:1.0,/root/share/mel-dryrun/multipacking-stt:1.0,/root/share/mel-dryrun/multipacking-stt-mel:0.3" \\
       ...
 """
 
@@ -79,7 +79,7 @@ def token_block(docs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--out', default='/share/mel-dryrun')
+    parser.add_argument('--out', default='/root/share/mel-dryrun')
     parser.add_argument('--model', default='Qwen/Qwen3-0.6B-Base')
     parser.add_argument('--tts-blocks', type=int, default=60)
     parser.add_argument('--stt-blocks', type=int, default=60)

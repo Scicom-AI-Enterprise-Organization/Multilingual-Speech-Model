@@ -31,10 +31,10 @@ ChiniDataset parquet, ~10,240-token attention-isolated blocks
 (`input_ids` / `position_ids` / `attention_mask` as per-doc lengths).
 
 ```bash
-python multipacking_stt.py --base-dir /share/stt --workers 96          # everything
-python multipacking_stt.py --base-dir /share/stt --subsets 'malaysian-*' 'emilia_zh'
-python multipacking_stt.py --base-dir /share/stt --stage download      # zips + metadata only
-python multipacking_stt.py --base-dir /share/stt --stage upload        # -> Scicom-intl/Multilingual-STT-multipacking-10k
+python multipacking_stt.py --base-dir /root/share/stt --workers 96          # everything
+python multipacking_stt.py --base-dir /root/share/stt --subsets 'malaysian-*' 'emilia_zh'
+python multipacking_stt.py --base-dir /root/share/stt --stage download      # zips + metadata only
+python multipacking_stt.py --base-dir /root/share/stt --stage upload        # -> Scicom-intl/Multilingual-STT-multipacking-10k
 ```
 
 Rows are dropped when `language` is missing/`und`, the normalized text is empty,
@@ -74,8 +74,8 @@ utterance in the block onto the wrong placeholders.
 pip install soundfile soxr
 
 # audio zips are the *audio* corpus — always scope, and check df -h first
-python multipacking_stt_mel.py --base-dir /share/stt-mel --subsets 'malaysian-*' 'emilia_zh'
-python multipacking_stt_mel.py --base-dir /share/stt-mel --stage upload
+python multipacking_stt_mel.py --base-dir /root/share/stt-mel --subsets 'malaysian-*' 'emilia_zh'
+python multipacking_stt_mel.py --base-dir /root/share/stt-mel --stage upload
 ```
 
 Extra drop reasons over the token pack: `duration` (outside `--min-seconds` /

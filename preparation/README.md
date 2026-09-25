@@ -92,7 +92,7 @@ len(ds), ds[0]
 ### Usage
 
 ```bash
-python multipacking.py all --base-dir /share/multipacking --workers 96
+python multipacking.py all --base-dir /root/share/multipacking --workers 96
 python multipacking.py malaysian-tamil-emilia youtube-cantonese-emilia
 python multipacking.py all --stage download    # only fetch/extract zips
 python multipacking.py all --stage pack        # zips already extracted

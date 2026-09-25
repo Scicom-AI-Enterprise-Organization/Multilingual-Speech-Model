@@ -53,7 +53,7 @@ TTS/expressive variants and still write mosaicml MDS.
   it's safe to `rm -rf` the `neucodec/<folder>` trees of datasets that already
   finished packing — but then also remove their `neucodec/.extracted/*.done`
   markers, or a later re-run will think the JSONs are still on disk.
-- Work dir `/share/multipacking/`: `venv/` (uv, CPU torch + chinidataset),
+- Work dir `/root/share/multipacking/`: `venv/` (uv, CPU torch + chinidataset),
   `zips/` (deleted after extract), `neucodec/` (extracted JSONs, millions of small
   files), `out/<dataset>/`, `hf/` (HF_HOME), `run.log`.
 - **`unset LD_LIBRARY_PATH` before running python there.** Login shells (tmux/`claude-ping run`)
@@ -62,7 +62,7 @@ TTS/expressive variants and still write mosaicml MDS.
   `libtorch` symbols (`torch._C has no attribute '_dlpack_exchange_api'`). Non-login
   `claude-ping exec` doesn't set it — so imports "work" in exec and then crash in tmux.
 - Drive it with `~/Documents/claude-ping` (set `CLAUDE_PING_CONFIG` to a per-project
-  JSON): `claude-ping run --session <name> "cd /share/multipacking && unset LD_LIBRARY_PATH PYTHONPATH && HF_HOME=/share/multipacking/hf venv/bin/python multipacking.py all --workers 96"`,
+  JSON): `claude-ping run --session <name> "cd /root/share/multipacking && unset LD_LIBRARY_PATH PYTHONPATH && HF_HOME=/root/share/multipacking/hf venv/bin/python multipacking.py all --workers 96"`,
   then `claude-ping watch --session <name> --interval 120s` in the background.
   `scp` is not supported by that box — use `claude-ping sync`, and keep
   `venv,zips,neucodec,out,hf` in `sync_excludes` or rsync `--delete` wipes them.
