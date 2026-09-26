@@ -74,6 +74,16 @@ Put new work in `README.md` or an area README, not back into V1.
   adamw 5e-4 8.751, and **AdamW at 1e-3 diverged** (grad_norm 272 -> 45,610 at peak LR).
   `--learning_rate` is only the AdamW side of the hybrid. The older "AdamW beat Muon+AdamW"
   result in README_V1 was token-only at 1-epoch scale and does not transfer to this mixture.
+- **SOAP has no bf16 eigendecomposition**: `torch.linalg.eigh` has no `BFloat16` CUDA kernel,
+  so pytorch_optimizer's SOAP catches the `NotImplementedError` and redoes it in float32.
+  That fallback *allocates* (≈292MB at 1.7B), so a rank with no spare memory dies with an OOM
+  whose first line is the eigh error and looks like an unsupported-dtype bug. It is a headroom
+  bug. Keep micro-batch 4 x 64 accum at 1.7B (same 2048-block global batch as 8 x 32): the
+  ablation ran that geometry, and at micro-batch 8 a rank already peaks at 143.1 of 143.8GB
+  before SOAP's Kronecker factors and eigenbases are added.
+- The box is **shared with other containers**. Their processes are invisible to `ps` here but
+  show in `nvidia-smi --query-compute-apps`; seen holding 130.8GB on all 8 cards. Check free
+  GPU memory before launching, not just that `nvidia-smi` lists the cards.
 - `HybridOptimizer.param_groups` proxies the sub-optimizers' groups, so an HF LambdaLR
   scheduler decays SOAP and AdamW proportionally from their own initial LRs (verified: matrix
   1e-3 -> 1e-4, adamw 1e-4 -> 1e-5 at `min_lr_ratio` 0.1) and checkpoint resume restores both.

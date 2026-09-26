@@ -156,6 +156,17 @@ class DataTrainingArguments:
             )
         },
     )
+    validation_file: Optional[str] = field(
+        default=None,
+        metadata={"help": "Dev pack to validate on, or several named ones: "
+                          "'tts=dirA,stt=dirB,mel=dirC' reports eval_tts_loss, eval_stt_loss "
+                          "and eval_mel_loss separately. One model trains on the mixture, but "
+                          "each task is scored on its own dev split -- a mixture-wide loss "
+                          "hides an arm that has stopped learning."})
+    max_eval_blocks: int = field(
+        default=256,
+        metadata={"help": "Evaluate on an evenly-strided subset this many blocks wide "
+                          "(0 = all of it). A full dev pass costs real training time."})
     audio_dir: Optional[str] = field(
         default=None,
         metadata={
@@ -331,15 +342,19 @@ def main():
     class DatasetFixed(torch.utils.data.Dataset):
         """One packed dataset; blocks carry audio only if the pack wrote it."""
 
-        def __init__(self, local):
+        def __init__(self, local, indices=None):
             self.dataset = StreamingDataset(local=local)
+            # evenly-strided view, for capping the dev pass
+            self.indices = indices
 
         def __getitem__(self, idx):
+            if self.indices is not None:
+                idx = int(self.indices[idx])
             # never mutate the row: the reader caches it (see unpack_block)
             return unpack_block(self.dataset[idx], sequence_length, data_args.audio_dir)
 
         def __len__(self):
-            return len(self.dataset)
+            return len(self.dataset) if self.indices is None else len(self.indices)
 
     class MixedDataset(torch.utils.data.Dataset):
         """Several packed datasets behind one flat index (see mixture_index).
@@ -381,6 +396,32 @@ def main():
         raise SystemExit(f'--audio_dir {data_args.audio_dir} does not exist')
     dataset = MixedDataset(specs)
     print('dataset', len(dataset), dataset[0]['attention_mask'].shape)
+
+    def capped(path):
+        """A dev pack, cut to --max_eval_blocks by striding rather than truncating.
+
+        Packs are written worker by worker, so the first N blocks are one slice of the
+        corpus rather than a sample of it.
+        """
+        ds = DatasetFixed(path)
+        total = len(ds)
+        cap = data_args.max_eval_blocks
+        if cap and total > cap:
+            ds.indices = np.linspace(0, total, cap, endpoint=False).astype(np.int64)
+        return ds, total
+
+    eval_dataset = None
+    if data_args.validation_file:
+        named = [part.split('=', 1) for part in data_args.validation_file.split(',') if part.strip()]
+        if len(named) and all(len(part) == 2 for part in named):
+            eval_dataset = {}
+            for name, path in named:
+                eval_dataset[name.strip()], total = capped(path.strip())
+                print(f'eval dataset [{name.strip()}]', len(eval_dataset[name.strip()]),
+                      f'of {total} blocks')
+        else:
+            eval_dataset, total = capped(data_args.validation_file)
+            print('eval dataset', len(eval_dataset), f'of {total} blocks')
 
     def collator(batch):
         batch = [b for b in batch if b is not None]
@@ -432,7 +473,7 @@ def main():
         model=model,
         args=training_args,
         train_dataset=dataset,
-        eval_dataset=None,
+        eval_dataset=eval_dataset,
         tokenizer=tokenizer,
         data_collator=collator,
         compute_metrics=None,

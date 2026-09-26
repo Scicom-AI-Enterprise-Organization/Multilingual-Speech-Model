@@ -16,6 +16,13 @@
 # num_decay_steps must be ~10% of the total optimizer steps for this mixture -- 243 below is
 # a leftover from the 100-step sweep. Steps = sum(blocks x weight) / (8 GPUs x 8 x 32).
 #
+# Batch is 4 x 64 accum x 8 GPUs = 2048 blocks = 21M tokens/step -- the same global batch
+# as 8 x 32, but the geometry the 1.7B ablation actually ran. At micro-batch 8 a rank peaks
+# at 143.1GB of the 143.8GB card with plain AdamW, and SOAP adds preconditioner state on top
+# (per 2D weight: two Kronecker factors plus their eigenbases, and the eigendecomposition
+# falls back to float32 because linalg_eigh has no bf16 CUDA kernel). 4 x 64 costs ~1% more
+# wall clock and leaves room for the tenant sharing this box.
+#
 # --audio_dir is the extracted audio tree the mel pack's paths point into: that pack
 # stores paths, not audio, and the dataloader workers decode + resample on the fly.
 #
@@ -33,8 +40,8 @@ torchrun --nproc_per_node 8 \
 --audio_dir "gfs/01be5b33/audio" \
 --optimizer soap \
 --matrix_lr 1e-3 \
---per_device_train_batch_size 8 \
---gradient_accumulation_steps 32 \
+--per_device_train_batch_size 4 \
+--gradient_accumulation_steps 64 \
 --output_dir gfs/01be5b33/Multilingual-TTS-Qwen3-1.7B-mel-soap \
 --bf16 --do_train --do_eval false --num_train_epochs 1 \
 --train_file "gfs/01be5b33/multipacking-tts:1.0,gfs/01be5b33/multipacking-stt:1.0,gfs/01be5b33/multipacking-stt-mel:2.0" \
