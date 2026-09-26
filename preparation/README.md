@@ -173,6 +173,21 @@ python multipacking_nonverbal.py --base-dir /root/share/nonverbal
 python multipacking_nonverbal.py --stage pack --keep-families laughter,cough,sigh
 ```
 
+## Assembling the mixture — `build_mixture.py`
+
+Reads every pack on disk and prints the `--train_file` string, the per-arm share, the step
+count for the launch script's batch geometry, and `num_decay_steps` at 10% of it. Token
+counts come from each packer's own summary.json — counting them by reading rows costs
+minutes per pack, because a random block read is a row-group decode.
+
+Packs still being written are skipped: a wave counts only once it has both `index.json`
+and its `summary-wave-N.json`.
+
+```bash
+python build_mixture.py
+python build_mixture.py --nonverbal-weight 50 --mel-weight 2.0 --json-out mixture.json
+```
+
 ## TTS / expressive multipacking (still notebooks)
 
 - `multipacking-tts.ipynb`, `combine-multipacking-tts.ipynb` — single-utterance TTS
