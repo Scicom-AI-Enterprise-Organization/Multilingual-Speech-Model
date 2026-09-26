@@ -121,3 +121,51 @@ re-packing.
 2. Re-enable checkpointing (the sweep ran `--save_strategy no`).
 3. Set `num_decay_steps` to ~10% of the real step count; in the 200-step sweep the WSD
    schedule never entered decay.
+
+## Can the data live on the NFS filer? (measured 2026-09-26)
+
+`10.0.2.128:/mnt/data` is 10 PB with 3.6 TB used — effectively unlimited space, mounted at
+`/mnt/workspace`. Same filer as the `/mnt` path that was already found slow. Measured against
+`/root/share` (local NVMe) on the idle box:
+
+| operation | `/root/share` | `/mnt/data` | NFS penalty |
+|---|---:|---:|---:|
+| sequential write, 4 GiB | 1,402 MB/s | 453 MB/s | 3.1× |
+| sequential read, 4 GiB (O_DIRECT) | 6,253 MB/s | 349 MB/s | 18× |
+| create 6,000 × 160 KB, 32 threads | 11,063 files/s | 348 files/s | **32×** |
+| `unzip` 2,000 files (312 MB) | 1,090 files/s | 79 files/s | **14×** |
+| `rm -rf` 8,000 files | 37,715 files/s | 322 files/s | **117×** |
+| cold random read, 1 reader (O_DIRECT) | 3,461 files/s | 152 files/s | 23× |
+| cold random read, 32 readers | 8,272 files/s | 1,685 files/s | 4.9× |
+| p50 / p99 read latency, 32 readers | 2.4 / 5.9 ms | 19.2 / 33.5 ms | 8× |
+
+Small-file *metadata* is where NFS collapses, and the mel tree is nothing but small files:
+**43,530,451 audio files, mean 44.7 KB, p50 30.9 KB, 1.99 TB** (full walk + 0.2% size sample).
+
+- **Building the mel tree on NFS**: extraction is the bottleneck, not bandwidth.
+  43.5 M files ÷ 348 files/s ≈ **35 h** (single-stream `unzip` ≈ 153 h) versus ~8 h local.
+- **Moving the tree that already exists**: `cp` is the same 348 files/s ≈ **35 h**.
+- **Deleting it afterwards**: 43.5 M ÷ 322 files/s ≈ **37 h**.
+- **Reading it at train time**: the mel arm needs one ~9.8 s clip per document. At 21 M
+  tokens/step with mel ≈ ⅓ of the mixture and ~20 s/step, that is **~605 files/s and 27 MB/s**.
+  NFS delivers 1,200–1,700 files/s with 8–32 readers, so it would work — but on ~2–2.8×
+  headroom, on a filer shared with other people's jobs, with a 20–86 ms p99 tail. Local has 13×.
+
+### The packs are the opposite case
+
+Random block reads out of a ChiniDataset pack are **CPU-bound on row-group decode, not I/O** —
+2,048 random blocks (one 21 M-token global step) out of `malaysian-tamil-emilia`:
+
+| access | `/root/share` | `/mnt/data` |
+|---|---:|---:|
+| 2,048 sequential blocks | 6,753 blocks/s (256 MB/s) | 2,511 blocks/s (95 MB/s) |
+| 2,048 random blocks | 16.3 blocks/s (0.6 MB/s) | 12.5 blocks/s (0.5 MB/s) |
+
+Random costs 0.5–0.6 MB/s of actual I/O either way, so NFS is only **1.3× slower**. Per rank a
+step needs 12.8 blocks/s; the launch scripts already run 5–8 dataloader workers with prefetch,
+giving 60–130 blocks/s. Copying packs there is sequential big-file work: 5.8 GB in 21 s
+(276 MB/s), so all ~940 GB of packs moves in ~1 h.
+
+**Decision: keep the 43.5 M audio files on `/root/share`, stage finished packs to `/mnt/data`.**
+That frees ~940 GB locally and covers the ~160 GB shortfall the remaining packs would otherwise
+hit, at no measurable training cost. Do not extract or delete millions of small files on NFS.

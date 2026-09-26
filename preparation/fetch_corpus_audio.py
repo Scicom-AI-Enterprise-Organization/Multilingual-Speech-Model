@@ -74,14 +74,21 @@ def select(by_subset, budget_bytes):
 
 
 def _fetch_one(args):
+    """Fetch+extract one zip. A zip that cannot be had is reported, not raised:
+    aborting 1,171 good downloads over one bad file is worse than a short coverage gap."""
     name, out, marker_dir = args
     if (Path(marker_dir) / f'{name}.done').exists():
         return 0
-    path = file_with_retry(REPO, name, local_dir=os.path.join(out, 'zips'))
-    r = subprocess.run(['unzip', '-q', '-o', path, '-d', out], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(f'unzip {name}: {r.stderr[-300:]}')
-    os.remove(path)
+    try:
+        path = file_with_retry(REPO, name, local_dir=os.path.join(out, 'zips'))
+        r = subprocess.run(['unzip', '-q', '-o', path, '-d', out], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(f'unzip rc={r.returncode}: {r.stderr[-200:]}')
+        os.remove(path)
+    except Exception as e:
+        log(f'{name}: SKIPPED after retries — {type(e).__name__}: {str(e)[:120]}')
+        Path(marker_dir, f'{name}.failed').touch()
+        return 0
     Path(marker_dir, f'{name}.done').touch()
     log(f'{name}: extracted')
     return 1
@@ -116,12 +123,19 @@ def main():
     if args.plan_only:
         return
 
-    todo = [c[0] for c in chosen if not (marker_dir / f'{c[0]}.done').exists()]
+    todo = [c[0] for c in chosen
+            if not (marker_dir / f'{c[0]}.done').exists()
+            and not (marker_dir / f'{c[0]}.failed').exists()]
     log(f'{len(todo)} zips to fetch')
     tasks = [(n, str(out), str(marker_dir)) for n in todo]
     with get_context('fork').Pool(min(args.workers, max(1, len(tasks)))) as pool:
         done = sum(pool.map(_fetch_one, tasks, chunksize=1))
-    log(f'CORPUS_AUDIO_READY {done} zips extracted')
+    failed = sorted(p.name[:-len('.failed')] for p in marker_dir.glob('*.failed'))
+    have = len(list(marker_dir.glob('*.done')))
+    log(f'CORPUS_AUDIO_READY {have}/{len(chosen)} zips on disk, {done} this pass, '
+        f'{len(failed)} unrecoverable')
+    if failed:
+        log('  skipped: ' + ', '.join(failed[:5]) + ('…' if len(failed) > 5 else ''))
 
 
 if __name__ == '__main__':

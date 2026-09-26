@@ -113,7 +113,9 @@ def download_tokens(base, meta_files, workers):
     wanted = sorted(f'{fo}_neucodec.zip' for fo in folders
                     if f'{fo}_neucodec.zip' in available)
     missing = sorted(fo for fo in folders if f'{fo}_neucodec.zip' not in available)
-    todo = [z for z in wanted if not (marker_dir / f'{z}.done').exists()]
+    todo = [z for z in wanted
+            if not (marker_dir / f'{z}.done').exists()
+            and not (marker_dir / f'{z}.failed').exists()]
     log(f'{len(folders)} subsets in wave | {len(wanted)} have token zips | '
         f'{len(missing)} have none (their rows are skipped) | {len(todo)} to fetch')
     if missing[:3]:
@@ -126,12 +128,18 @@ def download_tokens(base, meta_files, workers):
 
 
 def _fetch_tokens_one(args):
+    """A zip that cannot be had costs its subset's rows, not the whole wave."""
     name, base, marker_dir = args
-    path = file_with_retry(DATA_REPO, name, local_dir=os.path.join(base, 'zips'))
-    r = subprocess.run(['unzip', '-q', '-o', path, '-d', base], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(f'unzip {name}: {r.stderr[-300:]}')
-    os.remove(path)
+    try:
+        path = file_with_retry(DATA_REPO, name, local_dir=os.path.join(base, 'zips'))
+        r = subprocess.run(['unzip', '-q', '-o', path, '-d', base], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise RuntimeError(f'unzip rc={r.returncode}: {r.stderr[-200:]}')
+        os.remove(path)
+    except Exception as e:
+        log(f'{name}: SKIPPED after retries — {type(e).__name__}: {str(e)[:120]}')
+        Path(marker_dir, f'{name}.failed').touch()
+        return
     Path(marker_dir, f'{name}.done').touch()
 
 
