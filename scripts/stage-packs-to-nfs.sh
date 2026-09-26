@@ -45,7 +45,10 @@ else
     w=$(basename "$s" .json); w=${w#summary-}
     for task in tts stt mel; do stage "$CORPUS/out/corpus-$task/$w"; done
   done
-  # packs nothing is writing any more
-  for d in /root/share/packs /root/share/cv22/out /root/share/fleurs/out; do stage "$d"; done
+  # packs nothing is writing any more. Off by default: the FLEURS/CV22 packs are due to be
+  # re-packed against the unified vocab, and re-packing into a symlinked dir is asking for it.
+  if [ -n "$ALSO_IDLE" ]; then
+    for d in /root/share/packs /root/share/cv22/out /root/share/fleurs/out; do stage "$d"; done
+  fi
 fi
 df -h / | tail -1
