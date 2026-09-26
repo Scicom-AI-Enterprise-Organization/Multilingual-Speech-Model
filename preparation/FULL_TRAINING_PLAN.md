@@ -169,3 +169,36 @@ giving 60–130 blocks/s. Copying packs there is sequential big-file work: 5.8 G
 **Decision: keep the 43.5 M audio files on `/root/share`, stage finished packs to `/mnt/data`.**
 That frees ~940 GB locally and covers the ~160 GB shortfall the remaining packs would otherwise
 hit, at no measurable training cost. Do not extract or delete millions of small files on NFS.
+
+## Build log
+
+### Non-verbal tags — done (2026-09-26)
+
+`multipacking_nonverbal.py`, 12,740 rows over the three `*-Nonverbal-Tags` repos:
+
+| | |
+|---|---:|
+| rows | 12,740 |
+| no tag actually placed (`n_placed == 0`) | 7,585 |
+| token member absent from the source zip | 862 |
+| token JSON unreadable | 471 |
+| every kept tag dropped by the family filter | 686 |
+| **documents packed** | **3,998** |
+| blocks / tokens | 290 / 2,848,774 |
+| tags in the pack | 4,075 |
+
+Families kept: cough, crying, humming, laughter, screaming, sigh, sneeze. **`burping`
+(713 tags) is dropped** — it is ~14% of all placed tags and the pipeline's own notes call
+it mouth/plosive false-accepts that slipped past the CLAP gate, so training on it teaches
+the model to emit a burp tag on plosives. `--keep-families` overrides.
+
+Two things this pack forces:
+
+- **Vocabulary v2.** `<|sfx:*|>` was not in the 2,337-token list, and the mel tokens sit at
+  the *end* of that list, so anything inserted before them renumbers `<|mel|>` and silently
+  invalidates every mel block already written. `added_tokens_v2.json` is therefore v1
+  **unchanged** plus 7 sfx tags appended (2,337 → 2,344), asserted prefix-equal before
+  writing. Every existing pack keeps its ids; the trainer takes v2.
+- **Weighting.** 2.85M tokens against ~88B is 0.003%. At weight 1.0 the model effectively
+  never sees a tag — this pack needs 50–100× in `--train_file`, or leaving it out is the
+  honest choice. Packing it is not the same as training on it.

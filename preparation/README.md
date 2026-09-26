@@ -152,6 +152,27 @@ python multipacking_fleurs.py --base-dir <base> --task mel --audio-base <audio>
 python multipacking_fleurs.py --base-dir <base> --task stt --locales 'en_us' 'ms_my'
 ```
 
+## Non-verbal tags — `multipacking_nonverbal.py`
+
+Packs the three `Scicom-intl/*-Nonverbal-Tags` repos as TTS documents whose text carries
+inline `<|sfx:family|>` markers. Those repos hold only text and audit crops, so the speech
+tokens are read out of the source Emilia repos' `*_trim_neucodec.zip` (6 zips, 4.73 GB,
+downloaded whole and read in place — one holds 255K members, so nothing is extracted).
+
+12,740 rows -> **3,998 documents / 290 blocks / 2.85M tokens** (7,585 rows have no tag
+actually placed, 862 members are missing from the zips). `burping` is dropped by default;
+see [FULL_TRAINING_PLAN.md](FULL_TRAINING_PLAN.md) for why and for the weighting caveat.
+
+It also writes `added_tokens_v2.json` = the 2,337-token list **unchanged** + 7 sfx tags
+appended. The append order is not cosmetic: mel tokens are last in v1, so inserting
+anything ahead of them would renumber `<|mel|>` and invalidate every mel block already
+packed.
+
+```bash
+python multipacking_nonverbal.py --base-dir /root/share/nonverbal
+python multipacking_nonverbal.py --stage pack --keep-families laughter,cough,sigh
+```
+
 ## TTS / expressive multipacking (still notebooks)
 
 - `multipacking-tts.ipynb`, `combine-multipacking-tts.ipynb` — single-utterance TTS
