@@ -17,6 +17,7 @@ Put new work in `README.md` or an area README, not back into V1.
 | `scripts/` | torchrun launch scripts per model/stage (`1.7B.sh`, `0.6B-vc.sh`, `1.7B-mel.sh`, `ablation-fleurs.sh`, …). They run `-m qwen3_*` from the repo root, so invoke them as `bash scripts/<name>.sh` from there |
 | `docs/` | figures and result tables the READMEs embed |
 | `qwen3_adamw.py`, `qwen3_muonadamw*.py` | trainers; `_post` = post-training variant |
+| `speech_optimizers.py` | `build_optimizer` + `HybridOptimizer` (matrix optimizer on 2D hidden weights, AdamW on the rest), shared by the sweep harness and the real trainers. `--optimizer soap --matrix_lr 1e-3` is the three-task sweep's winner |
 | `dryrun_pack.py` | synthetic packs for all three tasks (real tokenizer ids, real audio files, random content) — smoke-tests the trainer end to end with no dataset. See README_V1 "TTS + STT + raw mel" |
 | `mel_audio.py` + `qwen3_mel_adamw.py` | **raw-mel audio input** (no whisper encoder — only its mel front end): log-mel 100 fps → stack 2 frames → LayerNorm+MLP → the embeddings behind `<|mel|>` placeholders. Trains all three tasks in one run (TTS tokens / STT tokens / STT mel) via weighted `--train_file "dir:weight,…"`. Tests: `stt/test_mel_pipeline.py` |
 | `preparation/` | multipacking: (text, speech-token) pairs → 10,240-token blocks. `multipacking.py` (VC pairs, all 6 datasets) writes **ChiniDataset parquet**; the TTS/expressive notebooks still write MDS. Samples are **attention-isolated** (per-doc position_ids reset + length-based block-diagonal mask). Prompt: `<|im_start|>{speaker}: {text}<|speech_start|>{tokens}<|im_end|>` (VC pairs omit `{speaker}: `). **Own CLAUDE.md — read it before touching path conventions or the remote box** |
@@ -67,6 +68,16 @@ Put new work in `README.md` or an area README, not back into V1.
   sampler warmup memory-heavy.
 - Datasets are HF-hosted under `Scicom-intl/` (public); tokens/`.env` has `HF_TOKEN`,
   `RUNPOD_API_KEY`, `WANDB_API_KEY` — never commit or echo it.
+- **Optimizer: use `--optimizer soap --matrix_lr 1e-3`, not AdamW.** The three-task FLEURS
+  sweep (TTS tokens + STT tokens + STT mel, one mixture, 200 steps at the published 21M-token
+  batch) ranked mean dev loss soap 1e-3 5.418 < soap 5e-4 5.436 < muon 1e-2 5.553 < ... <
+  adamw 5e-4 8.751, and **AdamW at 1e-3 diverged** (grad_norm 272 -> 45,610 at peak LR).
+  `--learning_rate` is only the AdamW side of the hybrid. The older "AdamW beat Muon+AdamW"
+  result in README_V1 was token-only at 1-epoch scale and does not transfer to this mixture.
+- `HybridOptimizer.param_groups` proxies the sub-optimizers' groups, so an HF LambdaLR
+  scheduler decays SOAP and AdamW proportionally from their own initial LRs (verified: matrix
+  1e-3 -> 1e-4, adamw 1e-4 -> 1e-5 at `min_lr_ratio` 0.1) and checkpoint resume restores both.
+  The `learning_rate` HF logs is param group 0 — the matrix group, not `--learning_rate`.
 - README_V1 ablations: AdamW beat Muon+AdamW at 1-epoch scale; hyperparameter search results
   and plots are in `README_V1.md` (the root README is now just an index).
 

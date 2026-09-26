@@ -25,7 +25,10 @@ by a projected whisper log-mel frame pair (see mel_audio.py). All three are mixe
 train time via `--train_file "dirA:1.0,dirB:1.0,dirC:2.0"`, so the ratio is a launch
 flag and nothing has to be repacked to change it.
 
-AdamW rather than Muon+AdamW because AdamW won the one-epoch ablation (see README).
+Optimizer is a launch flag (`--optimizer`, see speech_optimizers.py). The three-task
+FLEURS sweep at the published batch size ranked `soap --matrix_lr 1e-3` first on mean dev
+loss and diverged AdamW at 1e-3, so SOAP is the default here — the older AdamW-won result
+was a token-only, one-epoch ablation (README_V1).
 """
 
 import torch
@@ -67,6 +70,7 @@ import numpy as np
 from chinidataset import StreamingDataset
 from cut_cross_entropy import linear_cross_entropy
 from liger_kernel.transformers import apply_liger_kernel_to_qwen3, LigerFusedLinearCrossEntropyLoss
+from speech_optimizers import build_optimizer
 
 from mel_audio import (
     MEL_TOKENS,
@@ -174,6 +178,23 @@ class DataTrainingArguments:
     )
 
 
+@dataclass
+class OptimizerArguments:
+    """Which optimizer to train with. Defaults are the FLEURS three-task sweep's winner."""
+
+    optimizer: str = field(
+        default='soap',
+        metadata={"help": "adamw | muon | shampoo | soap | lion | ademamix. The hybrids run the "
+                          "2D hidden weights on the named optimizer at --matrix_lr and everything "
+                          "else (embeddings, lm_head, norms) on AdamW at --learning_rate."},
+    )
+    matrix_lr: Optional[float] = field(
+        default=1e-3,
+        metadata={"help": "LR for the 2D-hidden-weight sub-optimizer; required for muon/shampoo/soap. "
+                          "Sweep order: soap 1e-3 > soap 5e-4 > muon 1e-2 > muon 5e-3."},
+    )
+
+
 class Model(Qwen3ForCausalLM):
     def __init__(self, config):
         super().__init__(config)
@@ -249,12 +270,13 @@ class Model(Qwen3ForCausalLM):
 
 def main():
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, OptimizerArguments, TrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        model_args, data_args, training_args = parser.parse_json_file(
+        model_args, data_args, optim_args, training_args = parser.parse_json_file(
             json_file=os.path.abspath(sys.argv[1]))
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, optim_args, training_args = parser.parse_args_into_dataclasses()
 
     # Setup logging
     logging.basicConfig(
@@ -396,6 +418,16 @@ def main():
             out['mel_num_segments'] = len(waveforms)
         return out
 
+    # Trainer would build its own AdamW; pass ours and leave the scheduler to Trainer so
+    # --lr_scheduler_type warmup_stable_decay + --lr_scheduler_kwargs stay authoritative
+    optimizer = build_optimizer(
+        model, optim_args.optimizer,
+        lr=training_args.learning_rate,
+        weight_decay=training_args.weight_decay,
+        matrix_lr=optim_args.matrix_lr,
+    )
+    print(optimizer)
+
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -405,6 +437,7 @@ def main():
         data_collator=collator,
         compute_metrics=None,
         preprocess_logits_for_metrics=None,
+        optimizers=(optimizer, None),
     )
 
     if training_args.do_train:
@@ -416,6 +449,7 @@ def main():
         trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()
         trainer.save_state()
+        print('final param group LRs:', [g['lr'] for g in optimizer.param_groups])
 
 
 def _mp_fn(index):
