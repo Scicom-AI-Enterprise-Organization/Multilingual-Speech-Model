@@ -165,6 +165,7 @@ def pack_worker(args):
         mel_prefix = tokenizer('<|im_start|><|STT|><|mel_start|>',
                                add_special_tokens=False)['input_ids']
 
+    need_tokens = 'tts' in tasks or 'stt' in tasks
     stats = {'docs': 0, 'missing_token': 0, 'empty_text': 0, 'ratio': 0, 'no_lang': 0,
              'no_audio': 0, **{f'{t}_blocks': 0 for t in tasks},
              **{f'{t}_tokens': 0 for t in tasks}}
@@ -193,14 +194,19 @@ def pack_worker(args):
             langs = df['language'] if 'language' in df.columns else [None] * len(df)
             for audio_filename, raw, normalized, speaker, language in zip(
                     df['audio_filename'], df['text'], norm, speakers, langs):
+                # A mel document carries no speech tokens -- only <|mel|> placeholders -- so
+                # a mel-only run must not require the token JSON. It used to, which meant
+                # topping up the audio budget later would have forced a re-download of all
+                # 190GB of token zips just to re-pack mel. `clean` has already deleted them.
+                codes = None
                 tp = token_path(audio_filename)
-                if tp is None:
-                    stats['missing_token'] += 1
-                    continue
-                try:
-                    with open(base / tp) as fopen:
-                        codes = json.load(fopen)
-                except Exception:
+                if tp is not None:
+                    try:
+                        with open(base / tp) as fopen:
+                            codes = json.load(fopen)
+                    except Exception:
+                        codes = None
+                if codes is None and need_tokens:
                     stats['missing_token'] += 1
                     continue
 
@@ -209,7 +215,7 @@ def pack_worker(args):
                 if not tts_text and not stt_text:
                     stats['empty_text'] += 1
                     continue
-                if len((stt_text or tts_text).split()) > len(codes):
+                if codes is not None and len((stt_text or tts_text).split()) > len(codes):
                     stats['ratio'] += 1
                     continue
                 tagged = language in languages
@@ -217,12 +223,12 @@ def pack_worker(args):
                     stats['no_lang'] += 1
 
                 stats['docs'] += 1
-                s_tokens = ''.join([f'<|s_{c}|>' for c in codes])
-                if 'tts' in acc and tts_text:
+                s_tokens = ''.join([f'<|s_{c}|>' for c in codes]) if codes else ''
+                if 'tts' in acc and tts_text and codes:
                     voice = clean_text(speaker) or (language or 'unk')
                     prompt = f'<|im_start|>{voice}: {tts_text}<|speech_start|>{s_tokens}<|im_end|>'
                     acc['tts'].add(tokenizer(prompt, add_special_tokens=False)['input_ids'])
-                if 'stt' in acc and stt_text and tagged:
+                if 'stt' in acc and stt_text and tagged and codes:
                     prompt = f'<|im_start|><|STT|>{s_tokens}<|{language}|>{stt_text}<|im_end|>'
                     acc['stt'].add(tokenizer(prompt, add_special_tokens=False)['input_ids'])
                 if 'mel' in acc and stt_text and tagged:
