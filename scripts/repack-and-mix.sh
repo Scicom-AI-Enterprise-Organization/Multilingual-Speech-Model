@@ -19,7 +19,10 @@ export HF_HUB_DISABLE_XET=1 TOKENIZERS_PARALLELISM=false
 
 WAVE_LOG="${WAVE_LOG:-/root/share/multilingual-tts/pack-corpus.log}"
 VOCAB="${VOCAB:-/root/share/vocab/added_tokens_v2.json}"
-FLEURS_AUDIO="${FLEURS_AUDIO:-/root/share/fleurs-work/audio}"
+# NOT .../fleurs-work/audio: the metadata's `path` column is already 'audio/{locale}/...',
+# so the base is its PARENT. Pointing one level deeper resolves to audio/audio/... , every
+# row counts as no_audio, and the mel pack comes out empty with a clean exit code.
+FLEURS_AUDIO="${FLEURS_AUDIO:-/root/share/fleurs-work}"
 WORKERS="${WORKERS:-96}"
 MAX_WAIT="${MAX_WAIT:-57600}"          # 16h, then give up rather than hang forever
 PY=venv/bin/python

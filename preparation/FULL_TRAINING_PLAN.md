@@ -202,3 +202,43 @@ Two things this pack forces:
 - **Weighting.** 2.85M tokens against ~88B is 0.003%. At weight 1.0 the model effectively
   never sees a tag — this pack needs 50–100× in `--train_file`, or leaving it out is the
   honest choice. Packing it is not the same as training on it.
+
+### Data build complete (2026-09-27)
+
+37 packs, **12,703,211 blocks, 126.5B tokens**, 6,209 optimizer steps at 21.0M tokens/step:
+
+| arm | packs | blocks | tokens | share |
+|---|---:|---:|---:|---:|
+| TTS tokens | 17 | 7,559,746 | 75.22B | 59.6% |
+| STT tokens | 10 | 3,659,384 | 36.46B | 28.8% |
+| STT mel | 10 | 1,484,081 | 14.82B | 11.7% |
+
+Corpus waves contributed 99,569,413 docs (TTS 37.15B / STT 34.68B / mel 12.81B). **Waves 6
+and 7 produced zero mel tokens** — their subsets' audio is outside the 2 TB budget.
+
+#### Audio budget: 2.0 of 4.26 TB
+
+`audio_selection.json` records `budget_tb: 2.0`, `selected_bytes: 1,999,999,966,742`,
+`corpus_bytes: 4,256,912,587,895` — **47% of the corpus audio**, 1,171 of the audio zips,
+43.5M files. Completing it needs 2.26 TB more against ~500 GB free locally, so the tail
+would have to live on the NFS filer (~40 h to extract 50M small files there; reads at train
+time are fine, measured above).
+
+A mel-only re-pack no longer needs the token zips (`--task mel` skips them), so a later
+top-up costs the audio download plus ~3 h of mel packing, not a 190 GB token re-download.
+
+#### Two silent failures this build hit
+
+- **FLEURS mel packed empty with a clean exit code.** The metadata `path` column is already
+  `audio/{locale}/{split}/{id}.wav`, so `--audio-base` must be the *parent* of `audio/`.
+  Pointing it one level deeper gave `audio/audio/...`, every row counted as `no_audio`, and
+  the summary said `mel_blocks=0` while the run "succeeded". Now 18,018 blocks, `no_audio=0`.
+- **The shared audio root's 234 symlinks were all dangling**, still pointing at `/share/...`
+  from before the rename to `/root/share`. Nothing errors on a dangling audio root: rows
+  count as `no_audio` at pack time, and at train time a block silently keeps its random
+  `<|mel|>` embeddings. `scripts/link-audio-root.sh` now re-points with `ln -sfn` and
+  **fails if any dangling link remains**.
+
+Verified after both fixes: 3,215 utterances across corpus wave-0/3, FLEURS and CV22 mel
+packs resolve through `/root/share/audio-root` with 0 missing paths, and every block's
+`<|mel|>` count matches its `audio_samples`.
