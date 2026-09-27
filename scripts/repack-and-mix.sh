@@ -26,7 +26,13 @@ PY=venv/bin/python
 
 waited=0
 while ! grep -q CORPUS_PACKS_DONE "$WAVE_LOG" 2>/dev/null; do
+  # A gone python process is not proof of failure: the loop exits the last wave, runs clean,
+  # and only then echoes the marker. Polling inside that window once bailed out on a finished
+  # run. Give the marker a grace period and re-check before giving up.
   if ! pgrep -f 'multipacking_corpu[s]' >/dev/null && [ "$waited" -gt 600 ]; then
+    sleep 60
+    grep -q CORPUS_PACKS_DONE "$WAVE_LOG" 2>/dev/null && break
+    pgrep -f 'multipacking_corpu[s]' >/dev/null && continue
     echo "wave loop is not running and never printed CORPUS_PACKS_DONE - stopping"; exit 1
   fi
   [ "$waited" -ge "$MAX_WAIT" ] && { echo "timed out waiting for the waves"; exit 1; }
