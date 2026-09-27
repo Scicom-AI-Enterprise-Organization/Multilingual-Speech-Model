@@ -61,7 +61,6 @@ from multipacking_fleurs import (
     clean_text,
     log,
     probe_samples,
-    snake_chunks,
     tokenizer_from,
 )
 
@@ -146,6 +145,7 @@ def _fetch_tokens_one(args):
 
 def pack_worker(args):
     import pandas as pd
+    import pyarrow.parquet as pq
 
     from chinidataset import ParquetWriter
 
@@ -180,9 +180,9 @@ def pack_worker(args):
                               hashes=HASHES, size_limit=256 * 1024 * 1024))
             acc[task] = BlockAccumulator(writer, audio=task == 'mel')
 
-        for f in files:
+        for f, rg_lo, rg_hi in files:
             try:
-                df = pd.read_parquet(f)
+                df = pq.ParquetFile(f).read_row_groups(list(range(rg_lo, rg_hi))).to_pandas()
             except Exception:
                 continue
             if 'audio_filename' not in df.columns:
@@ -247,6 +247,43 @@ def pack_worker(args):
     return stats
 
 
+def row_group_tasks(files, target_tasks):
+    """Split the wave's parquet files into ~`target_tasks` row-group slices.
+
+    Whole-file chunks (snake_chunks, balanced by bytes) do not work here. The cost of a row
+    is dominated by whether its audio is on disk: a mel row costs an mp3 header probe
+    (~45ms, measured at ~22 rows/s per worker) and a row without audio costs nothing, and
+    that ratio swings wildly between subsets. So a byte-balanced split leaves one worker
+    holding hours of probing while the rest idle -- wave 2 spent 35+ minutes with 63 of 64
+    workers finished. Many small tasks let the executor balance by actual cost instead.
+    """
+    import pyarrow.parquet as pq
+
+    sized = []
+    total = 0
+    for f in files:
+        try:
+            md = pq.ParquetFile(f).metadata
+        except Exception:
+            continue
+        sized.append((f, md.num_row_groups, md.num_rows))
+        total += md.num_rows
+    if not sized:
+        return []
+    per_task = max(1, total // max(1, target_tasks))
+
+    out = []
+    for f, n_rg, n_rows in sized:
+        if n_rg <= 1 or n_rows <= per_task:
+            out.append([(str(f), 0, max(1, n_rg))])
+            continue
+        rows_per_rg = max(1, n_rows // n_rg)
+        rg_per_task = max(1, per_task // rows_per_rg)
+        for lo in range(0, n_rg, rg_per_task):
+            out.append([(str(f), lo, min(lo + rg_per_task, n_rg))])
+    return out
+
+
 def pack(base, audio_base, files, tasks, wave, workers, added_tokens_file):
     from chinidataset import StreamingDataset
     from chinidataset.util import merge_index
@@ -262,7 +299,8 @@ def pack(base, audio_base, files, tasks, wave, workers, added_tokens_file):
     G.update(tokenizer=tokenizer, base=str(base), audio_base=str(audio_base), tasks=tasks,
              wave=wave, languages=languages,
              mel_id=tokenizer.convert_tokens_to_ids('<|mel|>') if 'mel' in tasks else None)
-    chunks = list(enumerate(snake_chunks(files, workers)))
+    chunks = list(enumerate(row_group_tasks(files, workers * 6)))
+    log(f'{len(chunks)} tasks over {workers} workers')
     t0 = time.time()
     # ProcessPoolExecutor, not Pool.map: if a worker dies (nohang/OOM killer under memory
     # pressure), Pool.map blocks forever on the task queue's semaphore -- the dead child
@@ -271,13 +309,14 @@ def pack(base, audio_base, files, tasks, wave, workers, added_tokens_file):
     # wave 2. A broken executor raises on .result() instead. The per-worker line also makes
     # a stall visible in the log rather than requiring py-spy to find it.
     results = []
-    with ProcessPoolExecutor(max_workers=len(chunks),
+    with ProcessPoolExecutor(max_workers=min(workers, len(chunks)),
                              mp_context=get_context('fork')) as ex:
         futures = [ex.submit(pack_worker, c) for c in chunks]
+        every = max(1, len(futures) // 20)
         for i, fut in enumerate(as_completed(futures), 1):
             results.append(fut.result())
-            if i % 8 == 0 or i == len(futures):
-                log(f'{i}/{len(futures)} workers done ({time.time() - t0:.0f}s)')
+            if i % every == 0 or i == len(futures):
+                log(f'{i}/{len(futures)} tasks done ({time.time() - t0:.0f}s)')
     G.clear()
 
     totals = {k: sum(r[k] for r in results) for k in results[0]}
