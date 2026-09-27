@@ -44,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import get_context
 from pathlib import Path
 
@@ -263,8 +264,20 @@ def pack(base, audio_base, files, tasks, wave, workers, added_tokens_file):
              mel_id=tokenizer.convert_tokens_to_ids('<|mel|>') if 'mel' in tasks else None)
     chunks = list(enumerate(snake_chunks(files, workers)))
     t0 = time.time()
-    with get_context('fork').Pool(len(chunks)) as pool:
-        results = pool.map(pack_worker, chunks)
+    # ProcessPoolExecutor, not Pool.map: if a worker dies (nohang/OOM killer under memory
+    # pressure), Pool.map blocks forever on the task queue's semaphore -- the dead child
+    # never releases it, every surviving worker parks in SemLock.__enter__, and the parent
+    # waits in map() with no output and no error. That cost a 19-hour silent stall on
+    # wave 2. A broken executor raises on .result() instead. The per-worker line also makes
+    # a stall visible in the log rather than requiring py-spy to find it.
+    results = []
+    with ProcessPoolExecutor(max_workers=len(chunks),
+                             mp_context=get_context('fork')) as ex:
+        futures = [ex.submit(pack_worker, c) for c in chunks]
+        for i, fut in enumerate(as_completed(futures), 1):
+            results.append(fut.result())
+            if i % 8 == 0 or i == len(futures):
+                log(f'{i}/{len(futures)} workers done ({time.time() - t0:.0f}s)')
     G.clear()
 
     totals = {k: sum(r[k] for r in results) for k in results[0]}

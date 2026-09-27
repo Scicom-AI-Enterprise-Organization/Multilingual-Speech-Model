@@ -44,6 +44,19 @@ TTS/expressive variants and still write mosaicml MDS.
   don't refactor into `pool.map` args (pickling multi-GB row lists is what made the
   old notebooks slow to start).
 
+- **A packing worker that dies takes the whole run down silently.** `Pool.map` blocks
+  forever if a child is killed mid-`get()`: the dead child never releases the task queue's
+  semaphore, every surviving worker parks in `SemLock.__enter__`, and the parent sits in
+  `map()` with no error and no further log output. Wave 2 of the corpus pack sat like that
+  for **19 hours** (one worker died at 21:17:58; the other 95 started at 21:15:10 — the
+  odd start time is the tell, along with `_repopulate_pool` in a worker's `py-spy` stack).
+  `multipacking_corpus.py` now uses `ProcessPoolExecutor`, which raises on child death, and
+  logs every 8th worker so a stall is visible in the log. **96 workers x ~3.5GB RSS is
+  ~340GB**; that box runs a `nohang` daemon that kills the fattest process under memory
+  pressure, so leave headroom (64 workers) when anything else big is starting up.
+- `py-spy dump --pid <pid>` is the fastest way to tell a stall from a long tail — install it
+  into the venv, dump the parent and two workers.
+
 ## Running it (reference box)
 
 - Box: `ssh to the shared GPU box (host/port in the claude-ping config)` (key `scicom` at repo root,
