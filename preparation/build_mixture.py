@@ -20,9 +20,13 @@ Non-verbal tags are 2.85M tokens against ~88B. `--nonverbal-weight` exists becau
 the model sees a tag roughly never; it is the one weight that is a judgement call rather
 than a measurement.
 
+A weight of 0 leaves that arm out entirely (`--mel-weight 0` = TTS + STT tokens only):
+the trainer's mixture still draws one block from a `dir:0` entry, so it is never written.
+
 Usage:
     python build_mixture.py
     python build_mixture.py --nonverbal-weight 50 --mel-weight 2.0
+    python build_mixture.py --mel-weight 0 --json-out /root/share/mixture-tokens.json
     python build_mixture.py --emit-script scripts/1.7B-full.sh
 """
 
@@ -123,7 +127,8 @@ def main():
                    help='2.85M tokens is 0.003%% of the mixture at weight 1')
     p.add_argument('--tts-weight', type=float, default=1.0)
     p.add_argument('--stt-weight', type=float, default=1.0)
-    p.add_argument('--mel-weight', type=float, default=1.0)
+    p.add_argument('--mel-weight', type=float, default=1.0,
+                   help='0 leaves the raw-mel arm out (TTS + STT tokens only)')
     p.add_argument('--gpus', type=int, default=8)
     p.add_argument('--per-device-batch', type=int, default=4)
     p.add_argument('--grad-accum', type=int, default=64)
@@ -140,12 +145,14 @@ def main():
         blocks = tokens = weighted = 0
         report[arm] = []
         for path, why in arms[arm]:
+            w = args.nonverbal_weight if why == 'non-verbal tags' else weight_of[arm]
+            if w <= 0:
+                continue        # left out, not 'dir:0': mixture_index still takes 1 block of that
             try:
                 n, tok, exact = count(path, arm, args.corpus_out)
             except Exception as e:
                 print(f'  !! {path}: {type(e).__name__} {e}', file=sys.stderr)
                 continue
-            w = args.nonverbal_weight if why == 'non-verbal tags' else weight_of[arm]
             entries.append(f'{path}:{w:g}')
             blocks += n
             tokens += tok

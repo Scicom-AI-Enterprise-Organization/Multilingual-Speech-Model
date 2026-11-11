@@ -25,10 +25,18 @@ by a projected whisper log-mel frame pair (see mel_audio.py). All three are mixe
 train time via `--train_file "dirA:1.0,dirB:1.0,dirC:2.0"`, so the ratio is a launch
 flag and nothing has to be repacked to change it.
 
+`--mel false` trains tasks 1 and 2 only: the model is then a plain Qwen3ForCausalLM (no
+WhisperMel, no projector, nothing extra in the checkpoint) and a mel pack in the data is
+an error. The `<|mel*|>` tokens stay in the vocab, so every id matches the three-task runs.
+
 Optimizer is a launch flag (`--optimizer`, see speech_optimizers.py). The three-task
 FLEURS sweep at the published batch size ranked `soap --matrix_lr 1e-3` first on mean dev
 loss and diverged AdamW at 1e-3, so SOAP is the default here — the older AdamW-won result
 was a token-only, one-epoch ablation (README_V1).
+
+The loss is a launch flag too (`--loss_impl liger | fused`): both are fused linear
+cross-entropies that never hold the [tokens x vocab] logits; `fused` is fused_ce.py from
+small-ablation/cross-entropy and computes the logits themselves in fp32.
 """
 
 import torch
@@ -70,6 +78,7 @@ import numpy as np
 from chinidataset import StreamingDataset
 from cut_cross_entropy import linear_cross_entropy
 from liger_kernel.transformers import apply_liger_kernel_to_qwen3, LigerFusedLinearCrossEntropyLoss
+from fused_ce import fused_linear_cross_entropy
 from speech_optimizers import build_optimizer
 
 from mel_audio import (
@@ -137,6 +146,51 @@ class ModelArguments:
                 "float16",
                 "float32"],
         },
+    )
+    mel: bool = field(
+        default=True,
+        metadata={"help": "Build the raw-mel input path (WhisperMel + MelProjector). false = "
+                          "TTS + STT on audio tokens only: the model and its checkpoints are a "
+                          "plain Qwen3ForCausalLM and a mel pack in the data is an error. The "
+                          "<|mel*|> tokens stay in the vocab either way, so no id moves."},
+    )
+    loss_impl: str = field(
+        default='liger',
+        metadata={"help": "liger | fused. Both never hold the [tokens x vocab] logits. fused is "
+                          "fused_ce.py (small-ablation/cross-entropy): fp32 softmax statistics and "
+                          "gradient sums, and the logits in --fused_compute_dtype.",
+                  "choices": ["liger", "fused"]},
+    )
+    fused_compute_dtype: str = field(
+        default='float32',
+        metadata={"help": "fused: dtype of the output layer's products. float32 | bfloat16 | auto "
+                          "(the wider of the hidden state's and lm_head's: bf16 on a bf16 model, "
+                          "i.e. bf16 logits, the same rounding liger has).",
+                  "choices": ["float32", "bfloat16", "auto"]},
+    )
+    fused_precision: str = field(
+        default='tf32',
+        metadata={"help": "fused, float32 products: tf32 (TF32 tensor cores) | ieee (exact fp32). "
+                          "A bf16 input fits TF32's mantissa, so on a bf16 model tf32 loses only "
+                          "in the tensor-core accumulation: loss error 2.3e-7 vs ieee's 7.5e-11 at "
+                          "the 1.7B shape on H20, both far under bf16 logits' 3.4e-6, and ieee "
+                          "costs 2.3x the time. On fp32 weights tf32 also rounds the inputs.",
+                  "choices": ["tf32", "ieee"]},
+    )
+    fused_strategy: str = field(
+        default='precompute',
+        metadata={"help": "fused: precompute (3 products; gradients made in the forward and "
+                          "held until backward) | recompute (4 products, least memory held).",
+                  "choices": ["precompute", "recompute"]},
+    )
+    fused_block_mb: int = field(
+        default=512,
+        metadata={"help": "fused: size of the one fp32 logits block held at a time, MB."},
+    )
+    fused_filter_eps: float = field(
+        default=0.0,
+        metadata={"help": "fused: skip the gradient of vocabulary blocks whose probabilities are "
+                          "all below this and that hold no target (CCE's filtering). 0 = exact."},
     )
 
 
@@ -207,11 +261,38 @@ class OptimizerArguments:
 
 
 class Model(Qwen3ForCausalLM):
+    """TTS + STT on audio tokens. `MelModel` adds the raw-mel input path.
+
+    Kept free of mel modules so a token-only run's checkpoint is a plain
+    Qwen3ForCausalLM and its optimizer carries no projector that never trains.
+    """
+
+    # set by main() after from_pretrained; class defaults keep a bare from_pretrained usable
+    loss_impl = 'liger'
+    fused_kwargs = {}
+
     def __init__(self, config):
         super().__init__(config)
-        self.mel = WhisperMel()
-        self.mel_projector = MelProjector(config.hidden_size)
         self.loss = LigerFusedLinearCrossEntropyLoss(reduction="sum")
+
+    def embed(self, input_ids, mel_waveform=None, mel_frame_index=None, mel_segment_id=None,
+              mel_num_segments=0):
+        """Input embeddings, and a 0-valued term the loss must carry (None when not needed)."""
+        if mel_waveform is not None and mel_waveform.numel():
+            raise RuntimeError('a raw-mel block reached a model built with --mel false: drop the '
+                               'mel packs from --train_file / --validation_file, or use --mel true')
+        return self.get_input_embeddings()(input_ids), None
+
+    def summed_loss(self, hidden, labels):
+        """Next-token cross-entropy summed over the labelled positions, logits never held."""
+        if self.loss_impl == 'fused':
+            return fused_linear_cross_entropy(
+                hidden, self.lm_head.weight, labels, shift=True, reduction='sum',
+                **self.fused_kwargs,
+            )
+        hidden = hidden[:, :-1].reshape(-1, hidden.shape[-1])
+        labels = labels[..., 1:].contiguous().reshape(-1)
+        return self.loss(self.lm_head.weight, hidden, labels)
 
     def forward(
         self,
@@ -226,32 +307,8 @@ class Model(Qwen3ForCausalLM):
         num_items_in_batch=None,
         **kwargs,
     ):
-        inputs_embeds = self.get_input_embeddings()(input_ids)
-
-        if mel_waveform is not None and mel_waveform.numel():
-            # fp32 throughout: an STFT in bf16 loses the quiet end of the spectrum, and
-            # whisper's (max - 8) floor makes that loss utterance-wide
-            with torch.autocast(device_type=inputs_embeds.device.type, enabled=False):
-                mel = self.mel(
-                    mel_waveform.float(), mel_frame_index, mel_segment_id, int(mel_num_segments)
-                )
-            features = self.mel_projector(mel)
-            slots = input_ids == self.config.mel_token_id
-            if int(slots.sum()) != features.shape[0]:
-                raise RuntimeError(
-                    f'{int(slots.sum())} <|mel|> placeholders but {features.shape[0]} mel positions '
-                    '— the pack and the mel front end disagree on the frame rate'
-                )
-            # out-of-place: an in-place index_put_ into the embedding output does not
-            # survive gradient checkpointing cleanly
-            inputs_embeds = inputs_embeds.masked_scatter(
-                slots.unsqueeze(-1), features.to(inputs_embeds.dtype)
-            )
-            mel_touch = None
-        else:
-            # no mel document in this micro-batch — keep the projector in the graph or
-            # ddp_find_unused_parameters=false stalls the all-reduce (see zero_probe)
-            mel_touch = self.mel_projector.zero_probe(inputs_embeds)
+        inputs_embeds, probe = self.embed(
+            input_ids, mel_waveform, mel_frame_index, mel_segment_id, mel_num_segments)
 
         super_out = self.model.forward(
             inputs_embeds = inputs_embeds,
@@ -260,23 +317,56 @@ class Model(Qwen3ForCausalLM):
             output_hidden_states = True,
             **kwargs,
         )
-        if labels is not None:
-            embeddings = super_out.last_hidden_state
-            embeddings = embeddings[:,:-1].reshape(-1, embeddings.shape[-1])
-            labels = labels[..., 1:].contiguous()
-            labels = labels.reshape(-1)
-            loss = self.loss(self.lm_head.weight, embeddings, labels)
-            if num_items_in_batch is None:
-                # masking the mel tokens out of the labels makes this a real count, not
-                # just the token total the token-only trainers can assume
-                num_items_in_batch = (labels != -100).sum()
-            if torch.is_tensor(num_items_in_batch):
-                num_items_in_batch = num_items_in_batch.to(loss.device)
-            loss = loss / num_items_in_batch
-            if mel_touch is not None:
-                loss = loss + mel_touch.to(loss.dtype)
-            return {'loss': loss}
-        return super_out
+        if labels is None:
+            return super_out
+        loss = self.summed_loss(super_out.last_hidden_state, labels)
+        if num_items_in_batch is None:
+            # masking the mel tokens out of the labels makes this a real count, not
+            # just the token total the token-only trainers can assume
+            num_items_in_batch = (labels[..., 1:] != -100).sum()
+        if torch.is_tensor(num_items_in_batch):
+            num_items_in_batch = num_items_in_batch.to(loss.device)
+        loss = loss / num_items_in_batch
+        if probe is not None:
+            loss = loss + probe.to(loss.dtype)
+        return {'loss': loss}
+
+
+class MelModel(Model):
+    """Model + the raw log-mel front end: `<|mel|>` embeddings come from the audio."""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.mel = WhisperMel()
+        self.mel_projector = MelProjector(config.hidden_size)
+
+    def embed(self, input_ids, mel_waveform=None, mel_frame_index=None, mel_segment_id=None,
+              mel_num_segments=0):
+        inputs_embeds = self.get_input_embeddings()(input_ids)
+        if mel_waveform is None or not mel_waveform.numel():
+            # no mel document in this micro-batch — keep the projector in the graph or
+            # ddp_find_unused_parameters=false stalls the all-reduce (see zero_probe)
+            return inputs_embeds, self.mel_projector.zero_probe(inputs_embeds)
+
+        # fp32 throughout: an STFT in bf16 loses the quiet end of the spectrum, and
+        # whisper's (max - 8) floor makes that loss utterance-wide
+        with torch.autocast(device_type=inputs_embeds.device.type, enabled=False):
+            mel = self.mel(
+                mel_waveform.float(), mel_frame_index, mel_segment_id, int(mel_num_segments)
+            )
+        features = self.mel_projector(mel)
+        slots = input_ids == self.config.mel_token_id
+        if int(slots.sum()) != features.shape[0]:
+            raise RuntimeError(
+                f'{int(slots.sum())} <|mel|> placeholders but {features.shape[0]} mel positions '
+                '— the pack and the mel front end disagree on the frame rate'
+            )
+        # out-of-place: an in-place index_put_ into the embedding output does not
+        # survive gradient checkpointing cleanly
+        inputs_embeds = inputs_embeds.masked_scatter(
+            slots.unsqueeze(-1), features.to(inputs_embeds.dtype)
+        )
+        return inputs_embeds, None
 
 
 def main():
@@ -343,6 +433,7 @@ def main():
         """One packed dataset; blocks carry audio only if the pack wrote it."""
 
         def __init__(self, local, indices=None):
+            self.local = local
             self.dataset = StreamingDataset(local=local)
             # evenly-strided view, for capping the dev pass
             self.indices = indices
@@ -350,8 +441,15 @@ def main():
         def __getitem__(self, idx):
             if self.indices is not None:
                 idx = int(self.indices[idx])
+            row = self.dataset[idx]
+            samples = row.get('audio_samples')
+            if not model_args.mel and samples is not None and len(samples):
+                # caught here, before unpack_block asks for an --audio_dir this run
+                # deliberately does not have
+                raise ValueError(f'{self.local} is a raw-mel pack but --mel false: '
+                                 'drop it from --train_file / --validation_file')
             # never mutate the row: the reader caches it (see unpack_block)
-            return unpack_block(self.dataset[idx], sequence_length, data_args.audio_dir)
+            return unpack_block(row, sequence_length, data_args.audio_dir)
 
         def __len__(self):
             return len(self.dataset) if self.indices is None else len(self.indices)
@@ -378,18 +476,30 @@ def main():
         def __len__(self):
             return len(self.pairs)
 
-    model = Model.from_pretrained(
+    model = (MelModel if model_args.mel else Model).from_pretrained(
         model_args.model_name_or_path,
         attn_implementation = 'kernels-community/vllm-flash-attn3',
         torch_dtype = model_args.torch_dtype,
     )
     model.resize_token_embeddings(len(tokenizer), mean_resizing=False, pad_to_multiple_of=8)
     model.config.mel_token_id = mel_token_id
+    model.loss_impl = model_args.loss_impl
+    if model_args.loss_impl == 'fused':
+        model.fused_kwargs = dict(
+            compute_dtype=(None if model_args.fused_compute_dtype == 'auto'
+                           else getattr(torch, model_args.fused_compute_dtype)),
+            fp32_precision=model_args.fused_precision,
+            strategy=model_args.fused_strategy,
+            block_mb=model_args.fused_block_mb,
+            filter_eps=model_args.fused_filter_eps or None,
+        )
     print(model)
-    # a submodule built in __init__ is initialised from from_pretrained's missing-keys
-    # path; print it so a zeroed or nan projector shows up here and not as a 0.0 loss
-    fc1 = model.mel_projector.fc1.weight
-    print(f'mel_projector.fc1: std={float(fc1.std()):.5f} requires_grad={fc1.requires_grad}')
+    print(f'loss: {model.loss_impl} {model.fused_kwargs}')
+    if model_args.mel:
+        # a submodule built in __init__ is initialised from from_pretrained's missing-keys
+        # path; print it so a zeroed or nan projector shows up here and not as a 0.0 loss
+        fc1 = model.mel_projector.fc1.weight
+        print(f'mel_projector.fc1: std={float(fc1.std()):.5f} requires_grad={fc1.requires_grad}')
 
     specs = parse_train_files(data_args.train_file)
     if data_args.audio_dir and not os.path.isdir(data_args.audio_dir):

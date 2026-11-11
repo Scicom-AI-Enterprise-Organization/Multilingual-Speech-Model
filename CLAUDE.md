@@ -18,8 +18,9 @@ Put new work in `README.md` or an area README, not back into V1.
 | `docs/` | figures and result tables the READMEs embed |
 | `qwen3_adamw.py`, `qwen3_muonadamw*.py` | trainers; `_post` = post-training variant |
 | `speech_optimizers.py` | `build_optimizer` + `HybridOptimizer` (matrix optimizer on 2D hidden weights, AdamW on the rest), shared by the sweep harness and the real trainers. `--optimizer soap --matrix_lr 1e-3` is the three-task sweep's winner |
+| `fused_ce.py` + `test_fused_ce.py` | fused linear cross-entropy, **vendored unchanged** from `small-ablation/cross-entropy` (fix it upstream first): never holds the logits, fp32 softmax + gradient sums, logits in `compute_dtype`. `qwen3_mel_adamw.py --loss_impl fused` uses it; `liger` is still the trainer default |
 | `dryrun_pack.py` | synthetic packs for all three tasks (real tokenizer ids, real audio files, random content) — smoke-tests the trainer end to end with no dataset. See README_V1 "TTS + STT + raw mel" |
-| `mel_audio.py` + `qwen3_mel_adamw.py` | **raw-mel audio input** (no whisper encoder — only its mel front end): log-mel 100 fps → stack 2 frames → LayerNorm+MLP → the embeddings behind `<|mel|>` placeholders. Trains all three tasks in one run (TTS tokens / STT tokens / STT mel) via weighted `--train_file "dir:weight,…"`. Tests: `stt/test_mel_pipeline.py` |
+| `mel_audio.py` + `qwen3_mel_adamw.py` | **raw-mel audio input** (no whisper encoder — only its mel front end): log-mel 100 fps → stack 2 frames → LayerNorm+MLP → the embeddings behind `<|mel|>` placeholders. Trains all three tasks in one run (TTS tokens / STT tokens / STT mel) via weighted `--train_file "dir:weight,…"`. `--mel false` = TTS + STT tokens only (`Model`, a plain Qwen3 checkpoint; `MelModel` adds the mel path) — the next full run is this, mel is too heavy a dataset. Tests: `stt/test_mel_pipeline.py` |
 | `preparation/` | multipacking: (text, speech-token) pairs → 10,240-token blocks. `multipacking.py` (VC pairs, all 6 datasets) writes **ChiniDataset parquet**; the TTS/expressive notebooks still write MDS. Samples are **attention-isolated** (per-doc position_ids reset + length-based block-diagonal mask). Prompt: `<|im_start|>{speaker}: {text}<|speech_start|>{tokens}<|im_end|>` (VC pairs omit `{speaker}: `). **Own CLAUDE.md — read it before touching path conventions or the remote box** |
 | `synthetic-description/` | expressive-TTS descriptions: acoustic stats + classifiers → bins → LLM summary (→ `Scicom-intl/ExpressiveSpeech`). Expressive prompt adds `<|description|>` |
 | `nonverbal-tagging/` | non-verbal event mining (laughter/cough/…) → `*-Nonverbal-Tags` HF datasets. **Own CLAUDE.md with all pipeline + RunPod gotchas — read it before touching pods or HF bulk transfers** |
@@ -84,6 +85,12 @@ Put new work in `README.md` or an area README, not back into V1.
 - The box is **shared with other containers**. Their processes are invisible to `ps` here but
   show in `nvidia-smi --query-compute-apps`; seen holding 130.8GB on all 8 cards. Check free
   GPU memory before launching, not just that `nvidia-smi` lists the cards.
+- **Loss choice follows the weight dtype** (H20, 1.7B loss shape, README "Loss"). On a bf16
+  model, `fused` buys no gradient accuracy (the gradient leaving the loss is bf16 either way,
+  4.6e-3 vs fp64 for both), and fp32-on-TF32 costs 1.68s vs Liger's 1.18s per 40,960-token
+  micro-batch, so keep `liger`. On fp32 weights under `--bf16`, autocast silently turns Liger's
+  products bf16; `fused` fp32/tf32 gives 9-11x more accurate gradients at half the memory.
+  Liger >= 0.8.5 needs transformers >= 5; **0.8.0 is the newest that runs on 4.57**.
 - `HybridOptimizer.param_groups` proxies the sub-optimizers' groups, so an HF LambdaLR
   scheduler decays SOAP and AdamW proportionally from their own initial LRs (verified: matrix
   1e-3 -> 1e-4, adamw 1e-4 -> 1e-5 at `min_lr_ratio` 0.1) and checkpoint resume restores both.

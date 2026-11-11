@@ -289,6 +289,56 @@ Three qualifications:
 
 ## Training
 
+### TTS + STT tokens (next run)
+
+The next full run drops the raw-mel arm. The mel pack is the heavy part of the data: the
+whole extracted audio tree has to sit on the training box and be decoded every step.
+
+```bash
+venv/bin/python preparation/build_mixture.py --mel-weight 0 --json-out /root/share/mixture-tokens.json
+bash scripts/1.7B-full.sh          # MEL=0 (default): --mel false.  MEL=1 brings the mel arm back
+```
+
+`--mel false` builds `Model` rather than `MelModel`. There is no WhisperMel and no projector,
+so the checkpoint is a plain `Qwen3ForCausalLM`. The vocab is unchanged and the `<|mel*|>` ids
+stay reserved, so a mel stage can start from this checkpoint later. A mel pack in the data
+stops the run at its first block.
+
+### Loss
+
+`--loss_impl liger | fused`. Neither ever holds the [tokens x vocab] logits. `fused` is
+[fused_ce.py](fused_ce.py), vendored from small-ablation/cross-entropy. It keeps the softmax
+statistics and gradient sums in fp32 and computes the logits in `--fused_compute_dtype`
+(float32 by default, on TF32 with `--fused_precision tf32`).
+
+Measured on one H20-3e at the 1.7B run's loss shape: 40,960 tokens (4 x 10,240), d 2,048,
+V 217,208. Errors are max relative error against fp64 at N=2,048. Liger is 0.8.0, the newest
+release that runs on transformers 4.57.
+
+| model weights | loss | loss err | grad h err | grad W err | fwd+bwd | extra memory |
+|---|---|---|---|---|---|---|
+| bf16 | liger | 3.4e-6 | 4.6e-3 | 4.5e-3 | 1,182 ms | 3.7 GB |
+| bf16 | fused, bf16 products | 3.3e-6 | 4.6e-3 | 4.5e-3 | 1,182 ms | 5.6 GB |
+| bf16 | fused, fp32 on TF32 | 2.3e-7 | 4.6e-3 | 4.5e-3 | 1,679 ms | 4.6 GB |
+| bf16 | fused, fp32 exact | 7.5e-11 | 2.3e-3 | 2.3e-3 | 3,846 ms | 4.6 GB |
+| fp32 + `--bf16` autocast | liger (autocast makes its products bf16) | 4.1e-6 | 4.6e-3 | 3.2e-3 | 1,119 ms | 5.5 GB |
+| fp32 + `--bf16` autocast | fused, fp32 on TF32 | 1.6e-7 | 5.0e-4 | 2.9e-4 | 1,677 ms | 2.8 GB |
+| fp32 + `--bf16` autocast | fused, fp32 exact | 9.0e-9 | 3.4e-6 | 1.2e-6 | 3,946 ms | 2.8 GB |
+
+- **On a bf16 model, keep liger.** The gradient that leaves the loss is bf16 whichever loss
+  computed it, so fp32 logits only sharpen the loss *value*. Liger is as fast as the fastest
+  fused variant and holds the least memory. `scripts/1.7B-full.sh` uses liger; `LOSS=fused`
+  switches it.
+- **On fp32 weights, use fused.** `1.7B-mel.sh`, `0.6B-mel.sh` and the sweep run this way.
+  Under `--bf16` autocast, Liger's products drop to bf16. Fused fp32 on TF32 makes the
+  gradients 9-11x more accurate and holds half the memory, at +0.56 s per micro-batch.
+- The Liger release matters: a newer one (it needs transformers >= 5) took 811 ms and
+  1.2 GB on the bf16 case.
+- These are gradient-precision numbers, not loss curves. In small-ablation's 1,000-step run,
+  fused, Liger and plain logits trained within 0.01 of each other.
+
+`python test_fused_ce.py` checks both strategies against fp64.
+
 ### TTS + STT + raw mel
 
 ```bash
